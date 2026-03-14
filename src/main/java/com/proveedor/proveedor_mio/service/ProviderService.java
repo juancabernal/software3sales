@@ -15,8 +15,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 @Service
 public class ProviderService {
@@ -41,7 +39,7 @@ public class ProviderService {
         providers.addAll(providerRepository.loadInitialProviders());
     }
 
-    public Mono<ProviderDTO> createProvider(ProviderDTO request) {
+    public ProviderDTO createProvider(ProviderDTO request) {
         validateProviderPayload(request);
 
         Provider provider = providerMapper.toDomain(request);
@@ -51,66 +49,66 @@ public class ProviderService {
         provider.setModifiedDate(LocalDateTime.now());
 
         providers.add(provider);
-        return Mono.just(providerMapper.toDto(provider));
+        return providerMapper.toDto(provider);
     }
 
-    public Mono<ProviderDTO> getProviderById(String providerId) {
-        return findProviderById(providerId)
-            .map(providerMapper::toDto);
+    public ProviderDTO getProviderById(String providerId) {
+        Provider provider = findProviderById(providerId);
+        return providerMapper.toDto(provider);
     }
 
-    public Flux<ProviderDTO> getProviders(String status) {
+    public List<ProviderDTO> getProviders(String status) {
         ProviderStatus parsedStatus = parseStatus(status);
 
-        Flux<Provider> source = Flux.fromIterable(providers);
-        if (parsedStatus != null) {
-            source = source.filter(provider -> provider.getStatus() == parsedStatus);
+        List<ProviderDTO> result = new ArrayList<>();
+        for (Provider provider : providers) {
+            if (parsedStatus == null || provider.getStatus() == parsedStatus) {
+                result.add(providerMapper.toDto(provider));
+            }
         }
 
-        return source.map(providerMapper::toDto);
+        return result;
     }
 
-    public Mono<ProviderDTO> updateProvider(String providerId, ProviderDTO request) {
+    public ProviderDTO updateProvider(String providerId, ProviderDTO request) {
         validateProviderPayload(request);
 
-        return findProviderById(providerId)
-            .map(existing -> {
-                validateImmutableEmail(existing.getEmail(), request.getEmail());
+        Provider existing = findProviderById(providerId);
+        validateImmutableEmail(existing.getEmail(), request.getEmail());
 
-                existing.setBusinessName(request.getBusinessName());
-                existing.setDocumentTypeId(request.getDocumentTypeId());
-                existing.setDocumentNumber(request.getDocumentNumber());
-                existing.setTaxRegimeId(request.getTaxRegimeId());
-                existing.setResponsibleFirstName(request.getResponsibleFirstName());
-                existing.setResponsibleLastName(request.getResponsibleLastName());
-                existing.setPhone(request.getPhone());
-                existing.setDepartmentId(request.getDepartmentId());
-                existing.setCityId(request.getCityId());
-                existing.setAddress(request.getAddress());
-                existing.setBranchId(request.getBranchId());
-                existing.setModifiedDate(LocalDateTime.now());
+        existing.setBusinessName(request.getBusinessName());
+        existing.setDocumentTypeId(request.getDocumentTypeId());
+        existing.setDocumentNumber(request.getDocumentNumber());
+        existing.setTaxRegimeId(request.getTaxRegimeId());
+        existing.setResponsibleFirstName(request.getResponsibleFirstName());
+        existing.setResponsibleLastName(request.getResponsibleLastName());
+        existing.setPhone(request.getPhone());
+        existing.setDepartmentId(request.getDepartmentId());
+        existing.setCityId(request.getCityId());
+        existing.setAddress(request.getAddress());
+        existing.setBranchId(request.getBranchId());
+        existing.setModifiedDate(LocalDateTime.now());
 
-                return providerMapper.toDto(existing);
-            });
+        return providerMapper.toDto(existing);
     }
 
-    public Mono<ProviderDTO> updateStatus(String providerId, String status) {
+    public ProviderDTO updateStatus(String providerId, String status) {
         ProviderStatus newStatus = parseRequiredStatus(status);
 
-        return findProviderById(providerId)
-            .map(existing -> {
-                existing.setStatus(newStatus);
-                existing.setModifiedDate(LocalDateTime.now());
-                return providerMapper.toDto(existing);
-            });
+        Provider existing = findProviderById(providerId);
+        existing.setStatus(newStatus);
+        existing.setModifiedDate(LocalDateTime.now());
+        return providerMapper.toDto(existing);
     }
 
-    private Mono<Provider> findProviderById(String providerId) {
-        return Flux.fromIterable(providers)
-            .filter(provider -> provider.getId().equals(providerId))
-            .next()
-            .switchIfEmpty(Mono.error(
-                new ResourceNotFoundException("Provider not found with id: " + providerId)));
+    private Provider findProviderById(String providerId) {
+        for (Provider provider : providers) {
+            if (provider.getId().equals(providerId)) {
+                return provider;
+            }
+        }
+
+        throw new ResourceNotFoundException("Provider not found with id: " + providerId);
     }
 
     private ProviderStatus parseStatus(String status) {
