@@ -1,6 +1,5 @@
 package com.proveedor.proveedor_mio.controller;
 
-import com.proveedor.proveedor_mio.domain.ProviderStatus;
 import com.proveedor.proveedor_mio.dto.ProviderDTO;
 import com.proveedor.proveedor_mio.dto.ProviderStatusUpdateDTO;
 import com.proveedor.proveedor_mio.service.ProviderService;
@@ -35,43 +34,27 @@ public class ProviderController {
     }
 
     @GetMapping("/{providerId}")
-    public Mono<ResponseEntity<?>> getProviderById(@PathVariable String providerId) {
+    public Mono<ResponseEntity<ProviderDTO>> getProviderById(@PathVariable String providerId) {
         return providerService.getProviderById(providerId)
-            .map(provider -> ResponseEntity.ok((Object) provider))
-            .defaultIfEmpty(ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body("Provider no encontrado: " + providerId));
+            .map(ResponseEntity::ok);
     }
 
     @GetMapping
-    public Flux<ProviderDTO> getProviders(@RequestParam(required = false) ProviderStatus status) {
+    public Flux<ProviderDTO> getProviders(@RequestParam(required = false) String status) {
         return providerService.getProviders(status);
     }
 
     @PutMapping("/{providerId}")
-    public Mono<ResponseEntity<?>> updateProvider(@PathVariable String providerId,
-                                                   @RequestBody ProviderDTO request) {
-        return providerService.getProviderById(providerId)
-            .flatMap(current -> {
-                if (!current.getEmail().equals(request.getEmail())) {
-                    return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body("El email no se puede modificar."));
-                }
-                return providerService.updateProvider(providerId, request)
-                    .map(updated -> ResponseEntity.ok((Object) updated));
-            })
-            .defaultIfEmpty(ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body("Provider no encontrado: " + providerId));
+    public Mono<ResponseEntity<ProviderDTO>> updateProvider(@PathVariable String providerId,
+                                                            @RequestBody ProviderDTO request) {
+        return providerService.updateProvider(providerId, request)
+            .map(ResponseEntity::ok);
     }
 
     @PatchMapping("/{providerId}/status")
-    public Mono<ResponseEntity<?>> updateStatus(@PathVariable String providerId,
-                                                @RequestBody ProviderStatusUpdateDTO request) {
-        if (request.getStatus() == null) {
-            return Mono.just(ResponseEntity.badRequest().body("El estado es obligatorio."));
-        }
+    public Mono<ResponseEntity<ProviderDTO>> updateStatus(@PathVariable String providerId,
+                                                          @RequestBody ProviderStatusUpdateDTO request) {
         return providerService.updateStatus(providerId, request.getStatus())
-            .map(updated -> ResponseEntity.ok((Object) updated))
-            .defaultIfEmpty(ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body("Provider no encontrado: " + providerId));
+            .map(ResponseEntity::ok);
     }
 }
