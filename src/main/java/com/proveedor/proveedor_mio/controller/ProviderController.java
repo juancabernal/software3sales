@@ -37,8 +37,9 @@ public class ProviderController {
     @GetMapping("/{providerId}")
     public Mono<ResponseEntity<?>> getProviderById(@PathVariable String providerId) {
         return providerService.getProviderById(providerId)
-            .map(this::ok)
-            .defaultIfEmpty(notFound(providerId));
+            .map(provider -> ResponseEntity.ok((Object) provider))
+            .defaultIfEmpty(ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body("Provider no encontrado: " + providerId));
     }
 
     @GetMapping
@@ -48,39 +49,29 @@ public class ProviderController {
 
     @PutMapping("/{providerId}")
     public Mono<ResponseEntity<?>> updateProvider(@PathVariable String providerId,
-                                                  @RequestBody ProviderDTO request) {
+                                                   @RequestBody ProviderDTO request) {
         return providerService.getProviderById(providerId)
             .flatMap(current -> {
                 if (!current.getEmail().equals(request.getEmail())) {
-                    return Mono.just(badRequest("El email no se puede modificar."));
+                    return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("El email no se puede modificar."));
                 }
                 return providerService.updateProvider(providerId, request)
-                    .map(this::ok);
+                    .map(updated -> ResponseEntity.ok((Object) updated));
             })
-            .defaultIfEmpty(notFound(providerId));
+            .defaultIfEmpty(ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body("Provider no encontrado: " + providerId));
     }
 
     @PatchMapping("/{providerId}/status")
     public Mono<ResponseEntity<?>> updateStatus(@PathVariable String providerId,
                                                 @RequestBody ProviderStatusUpdateDTO request) {
         if (request.getStatus() == null) {
-            return Mono.just(badRequest("El estado es obligatorio."));
+            return Mono.just(ResponseEntity.badRequest().body("El estado es obligatorio."));
         }
         return providerService.updateStatus(providerId, request.getStatus())
-            .map(this::ok)
-            .defaultIfEmpty(notFound(providerId));
-    }
-
-    private ResponseEntity<?> ok(Object body) {
-        return ResponseEntity.ok(body);
-    }
-
-    private ResponseEntity<?> badRequest(String message) {
-        return ResponseEntity.badRequest().body(message);
-    }
-
-    private ResponseEntity<?> notFound(String providerId) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-            .body("Provider no encontrado: " + providerId);
+            .map(updated -> ResponseEntity.ok((Object) updated))
+            .defaultIfEmpty(ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body("Provider no encontrado: " + providerId));
     }
 }
