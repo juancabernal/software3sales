@@ -1,5 +1,6 @@
 package com.co.eatupapi.domain.inventory.transfer;
 
+<<<<<<< HEAD
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -147,3 +148,8 @@ public class Transfer {
     }
 }
 
+=======
+public class Transfer {
+}
+    
+>>>>>>> origin/develop
