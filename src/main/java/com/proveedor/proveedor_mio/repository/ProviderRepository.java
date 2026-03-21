@@ -4,18 +4,12 @@ import com.proveedor.proveedor_mio.domain.Provider;
 import com.proveedor.proveedor_mio.domain.ProviderStatus;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface ProviderRepository {
-
-    void initializeData(List<Provider> providers);
-
-    Provider save(Provider provider);
-
-    Optional<Provider> findById(String providerId);
-
-    List<Provider> findAll();
+public interface ProviderRepository extends JpaRepository<Provider, UUID> {
 
     List<Provider> findByStatus(ProviderStatus status);
 
-    List<Provider> loadInitialProviders();
+    Optional<Provider> findByEmail(String email);
 }

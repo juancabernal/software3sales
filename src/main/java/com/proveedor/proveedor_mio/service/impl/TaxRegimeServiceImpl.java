@@ -10,10 +10,10 @@ import com.proveedor.proveedor_mio.utils.exceptions.ResourceNotFoundException;
 import com.proveedor.proveedor_mio.utils.exceptions.ValidationException;
 import com.proveedor.proveedor_mio.utils.mapper.TaxRegimeMapper;
 import com.proveedor.proveedor_mio.utils.validation.ValidationUtils;
-import jakarta.annotation.PostConstruct;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -29,34 +29,6 @@ public class TaxRegimeServiceImpl implements TaxRegimeService {
         this.taxRegimeMapper = taxRegimeMapper;
     }
 
-    @PostConstruct
-    public void initData() {
-        LocalDateTime now = LocalDateTime.now();
-
-        TaxRegime common = new TaxRegime();
-        common.setId("1");
-        common.setName("Común");
-        common.setStatus(TaxRegimeStatus.ACTIVE);
-        common.setCreatedDate(now);
-        common.setModifiedDate(now);
-
-        TaxRegime simplified = new TaxRegime();
-        simplified.setId("2");
-        simplified.setName("Simplificado");
-        simplified.setStatus(TaxRegimeStatus.ACTIVE);
-        simplified.setCreatedDate(now);
-        simplified.setModifiedDate(now);
-
-        TaxRegime largeTaxpayer = new TaxRegime();
-        largeTaxpayer.setId("3");
-        largeTaxpayer.setName("Gran Contribuyente");
-        largeTaxpayer.setStatus(TaxRegimeStatus.ACTIVE);
-        largeTaxpayer.setCreatedDate(now);
-        largeTaxpayer.setModifiedDate(now);
-
-        taxRegimeRepository.initializeData(List.of(common, simplified, largeTaxpayer));
-    }
-
     @Override
     public TaxRegimeDTO createTaxRegime(TaxRegimeDTO request) {
         validateRequestBody(request);
@@ -66,10 +38,9 @@ public class TaxRegimeServiceImpl implements TaxRegimeService {
 
         TaxRegime taxRegime = taxRegimeMapper.toDomain(request);
         LocalDateTime now = LocalDateTime.now();
-        taxRegime.setId(String.valueOf(taxRegimeRepository.findAll().size() + 1));
         taxRegime.setStatus(TaxRegimeStatus.ACTIVE);
-        taxRegime.setCreatedDate(now);
-        taxRegime.setModifiedDate(now);
+        taxRegime.setCreatedAt(now);
+        taxRegime.setModifiedAt(now);
 
         return taxRegimeMapper.toDTO(taxRegimeRepository.save(taxRegime));
     }
@@ -86,11 +57,10 @@ public class TaxRegimeServiceImpl implements TaxRegimeService {
             ? taxRegimeRepository.findAll()
             : taxRegimeRepository.findByStatus(parsedStatus);
 
-        List<TaxRegimeDTO> result = new ArrayList<>();
-        for (TaxRegime taxRegime : taxRegimes) {
-            result.add(taxRegimeMapper.toDTO(taxRegime));
-        }
-        return result;
+        return taxRegimes.stream()
+            .sorted(Comparator.comparing(TaxRegime::getCreatedAt))
+            .map(taxRegimeMapper::toDTO)
+            .toList();
     }
 
     @Override
@@ -104,7 +74,7 @@ public class TaxRegimeServiceImpl implements TaxRegimeService {
         validateNameDoesNotExistForDifferentId(request.getName(), existing.getId());
 
         taxRegimeMapper.updateDomain(existing, request);
-        existing.setModifiedDate(LocalDateTime.now());
+        existing.setModifiedAt(LocalDateTime.now());
 
         return taxRegimeMapper.toDTO(taxRegimeRepository.save(existing));
     }
@@ -115,14 +85,23 @@ public class TaxRegimeServiceImpl implements TaxRegimeService {
 
         TaxRegime existing = findTaxRegimeById(taxRegimeId);
         existing.setStatus(newStatus);
-        existing.setModifiedDate(LocalDateTime.now());
+        existing.setModifiedAt(LocalDateTime.now());
 
         return taxRegimeMapper.toDTO(taxRegimeRepository.save(existing));
     }
 
     private TaxRegime findTaxRegimeById(String taxRegimeId) {
-        return taxRegimeRepository.findById(taxRegimeId)
+        UUID parsedId = parseUuid(taxRegimeId, "Tax regime not found with id: " + taxRegimeId);
+        return taxRegimeRepository.findById(parsedId)
             .orElseThrow(() -> new ResourceNotFoundException("Tax regime not found with id: " + taxRegimeId));
+    }
+
+    private UUID parseUuid(String value, String notFoundMessage) {
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException ex) {
+            throw new ResourceNotFoundException(notFoundMessage);
+        }
     }
 
     private TaxRegimeStatus parseStatus(String status) {
@@ -169,14 +148,25 @@ public class TaxRegimeServiceImpl implements TaxRegimeService {
 
     private void validateNameDoesNotExist(String name) {
         String normalizedName = name.trim();
-        if (taxRegimeRepository.existsByNameIgnoreCase(normalizedName)) {
+        boolean exists = taxRegimeRepository.findAll().stream()
+            .map(TaxRegime::getName)
+            .filter(existingName -> existingName != null)
+            .anyMatch(existingName -> existingName.equalsIgnoreCase(normalizedName));
+
+        if (exists) {
             throw new BusinessException("Tax regime already exists with name: " + normalizedName);
         }
     }
 
-    private void validateNameDoesNotExistForDifferentId(String name, String id) {
+    private void validateNameDoesNotExistForDifferentId(String name, UUID id) {
         String normalizedName = name.trim();
-        if (taxRegimeRepository.existsByNameIgnoreCaseAndIdNot(normalizedName, id)) {
+        boolean exists = taxRegimeRepository.findAll().stream()
+            .filter(taxRegime -> !taxRegime.getId().equals(id))
+            .map(TaxRegime::getName)
+            .filter(existingName -> existingName != null)
+            .anyMatch(existingName -> existingName.equalsIgnoreCase(normalizedName));
+
+        if (exists) {
             throw new BusinessException("Tax regime already exists with name: " + normalizedName);
         }
     }

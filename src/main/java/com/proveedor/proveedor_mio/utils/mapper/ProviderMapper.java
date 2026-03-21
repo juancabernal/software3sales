@@ -9,7 +9,7 @@ public class ProviderMapper {
 
     public ProviderDTO toDto(Provider provider) {
         ProviderDTO dto = new ProviderDTO();
-        dto.setId(provider.getId());
+        dto.setId(provider.getId() == null ? null : provider.getId().toString());
         dto.setBusinessName(provider.getBusinessName());
         dto.setDocumentTypeId(provider.getDocumentTypeId());
         dto.setDocumentNumber(provider.getDocumentNumber());
@@ -23,18 +23,17 @@ public class ProviderMapper {
         dto.setAddress(provider.getAddress());
         dto.setBranchId(provider.getBranchId());
         dto.setStatus(provider.getStatus());
-        dto.setCreatedDate(provider.getCreatedDate());
-        dto.setModifiedDate(provider.getModifiedDate());
+        dto.setCreatedDate(provider.getCreatedAt());
+        dto.setModifiedDate(provider.getModifiedAt());
         return dto;
     }
 
     public Provider toDomain(ProviderDTO dto) {
         Provider provider = new Provider();
         updateDomain(provider, dto);
-        provider.setId(dto.getId());
         provider.setStatus(dto.getStatus());
-        provider.setCreatedDate(dto.getCreatedDate());
-        provider.setModifiedDate(dto.getModifiedDate());
+        provider.setCreatedAt(dto.getCreatedDate());
+        provider.setModifiedAt(dto.getModifiedDate());
         return provider;
     }
 

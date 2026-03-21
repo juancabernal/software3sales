@@ -4,20 +4,12 @@ import com.proveedor.proveedor_mio.domain.TaxRegime;
 import com.proveedor.proveedor_mio.domain.TaxRegimeStatus;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface TaxRegimeRepository {
-
-    void initializeData(List<TaxRegime> taxRegimes);
-
-    TaxRegime save(TaxRegime taxRegime);
-
-    Optional<TaxRegime> findById(String id);
-
-    List<TaxRegime> findAll();
+public interface TaxRegimeRepository extends JpaRepository<TaxRegime, UUID> {
 
     List<TaxRegime> findByStatus(TaxRegimeStatus status);
 
-    boolean existsByNameIgnoreCase(String name);
-
-    boolean existsByNameIgnoreCaseAndIdNot(String name, String id);
+    Optional<TaxRegime> findByName(String name);
 }

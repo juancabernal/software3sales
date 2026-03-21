@@ -10,9 +10,8 @@ import com.proveedor.proveedor_mio.utils.exceptions.ResourceNotFoundException;
 import com.proveedor.proveedor_mio.utils.exceptions.ValidationException;
 import com.proveedor.proveedor_mio.utils.mapper.ProviderMapper;
 import com.proveedor.proveedor_mio.utils.validation.ValidationUtils;
-import jakarta.annotation.PostConstruct;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -33,21 +32,15 @@ public class ProviderServiceImpl implements ProviderService {
         this.providerMapper = providerMapper;
     }
 
-    @PostConstruct
-    public void initData() {
-        providerRepository.initializeData(providerRepository.loadInitialProviders());
-    }
-
     @Override
     public ProviderDTO createProvider(ProviderDTO request) {
         validateProviderPayload(request);
 
         Provider provider = providerMapper.toDomain(request);
         LocalDateTime now = LocalDateTime.now();
-        provider.setId(UUID.randomUUID().toString());
         provider.setStatus(ProviderStatus.ACTIVE);
-        provider.setCreatedDate(now);
-        provider.setModifiedDate(now);
+        provider.setCreatedAt(now);
+        provider.setModifiedAt(now);
 
         return providerMapper.toDto(providerRepository.save(provider));
     }
@@ -64,11 +57,10 @@ public class ProviderServiceImpl implements ProviderService {
             ? providerRepository.findAll()
             : providerRepository.findByStatus(parsedStatus);
 
-        List<ProviderDTO> result = new ArrayList<>();
-        for (Provider provider : providers) {
-            result.add(providerMapper.toDto(provider));
-        }
-        return result;
+        return providers.stream()
+            .sorted(Comparator.comparing(Provider::getCreatedAt))
+            .map(providerMapper::toDto)
+            .toList();
     }
 
     @Override
@@ -79,7 +71,7 @@ public class ProviderServiceImpl implements ProviderService {
         validateImmutableEmail(existing.getEmail(), request.getEmail());
 
         providerMapper.updateDomain(existing, request);
-        existing.setModifiedDate(LocalDateTime.now());
+        existing.setModifiedAt(LocalDateTime.now());
 
         return providerMapper.toDto(providerRepository.save(existing));
     }
@@ -90,14 +82,23 @@ public class ProviderServiceImpl implements ProviderService {
 
         Provider existing = findProviderById(providerId);
         existing.setStatus(newStatus);
-        existing.setModifiedDate(LocalDateTime.now());
+        existing.setModifiedAt(LocalDateTime.now());
 
         return providerMapper.toDto(providerRepository.save(existing));
     }
 
     private Provider findProviderById(String providerId) {
-        return providerRepository.findById(providerId)
+        UUID parsedId = parseUuid(providerId, "Provider not found with id: " + providerId);
+        return providerRepository.findById(parsedId)
             .orElseThrow(() -> new ResourceNotFoundException("Provider not found with id: " + providerId));
+    }
+
+    private UUID parseUuid(String value, String notFoundMessage) {
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException ex) {
+            throw new ResourceNotFoundException(notFoundMessage);
+        }
     }
 
     private ProviderStatus parseStatus(String status) {
