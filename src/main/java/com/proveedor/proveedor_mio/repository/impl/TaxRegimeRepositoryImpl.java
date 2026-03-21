@@ -1,7 +1,8 @@
-package com.proveedor.proveedor_mio.repository;
+package com.proveedor.proveedor_mio.repository.impl;
 
 import com.proveedor.proveedor_mio.domain.TaxRegime;
 import com.proveedor.proveedor_mio.domain.TaxRegimeStatus;
+import com.proveedor.proveedor_mio.repository.TaxRegimeRepository;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
