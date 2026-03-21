@@ -17,9 +17,13 @@ public class TaxRegimeMapper {
 
     public TaxRegime toDomain(TaxRegimeDTO dto) {
         TaxRegime taxRegime = new TaxRegime();
+        updateDomain(taxRegime, dto);
         taxRegime.setId(dto.getId());
-        taxRegime.setName(dto.getName());
-        taxRegime.setStatus(dto.getStatus());
         return taxRegime;
+    }
+
+    public void updateDomain(TaxRegime taxRegime, TaxRegimeDTO dto) {
+        taxRegime.setName(dto.getName() == null ? null : dto.getName().trim());
+        taxRegime.setStatus(dto.getStatus());
     }
 }

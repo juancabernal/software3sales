@@ -30,7 +30,15 @@ public class ProviderMapper {
 
     public Provider toDomain(ProviderDTO dto) {
         Provider provider = new Provider();
+        updateDomain(provider, dto);
         provider.setId(dto.getId());
+        provider.setStatus(dto.getStatus());
+        provider.setCreatedDate(dto.getCreatedDate());
+        provider.setModifiedDate(dto.getModifiedDate());
+        return provider;
+    }
+
+    public void updateDomain(Provider provider, ProviderDTO dto) {
         provider.setBusinessName(dto.getBusinessName());
         provider.setDocumentTypeId(dto.getDocumentTypeId());
         provider.setDocumentNumber(dto.getDocumentNumber());
@@ -43,9 +51,5 @@ public class ProviderMapper {
         provider.setCityId(dto.getCityId());
         provider.setAddress(dto.getAddress());
         provider.setBranchId(dto.getBranchId());
-        provider.setStatus(dto.getStatus());
-        provider.setCreatedDate(dto.getCreatedDate());
-        provider.setModifiedDate(dto.getModifiedDate());
-        return provider;
     }
 }
