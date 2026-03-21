@@ -1,16 +1,14 @@
 package com.proveedor.proveedor_mio.dto;
 
+import com.proveedor.proveedor_mio.domain.TaxRegimeStatus;
+
 public class TaxRegimeDTO {
 
     private String id;
     private String name;
+    private TaxRegimeStatus status;
 
     public TaxRegimeDTO() {
-    }
-
-    public TaxRegimeDTO(String id, String name) {
-        this.id = id;
-        this.name = name;
     }
 
     public String getId() {
@@ -27,5 +25,13 @@ public class TaxRegimeDTO {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public TaxRegimeStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(TaxRegimeStatus status) {
+        this.status = status;
     }
 }

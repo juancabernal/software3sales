@@ -1,19 +1,177 @@
 package com.proveedor.proveedor_mio.service;
 
+import com.proveedor.proveedor_mio.domain.TaxRegime;
+import com.proveedor.proveedor_mio.domain.TaxRegimeStatus;
 import com.proveedor.proveedor_mio.dto.TaxRegimeDTO;
+import com.proveedor.proveedor_mio.repository.TaxRegimeRepository;
+import com.proveedor.proveedor_mio.utils.exceptions.BusinessException;
+import com.proveedor.proveedor_mio.utils.exceptions.ResourceNotFoundException;
+import com.proveedor.proveedor_mio.utils.exceptions.ValidationException;
+import com.proveedor.proveedor_mio.utils.mapper.TaxRegimeMapper;
+import jakarta.annotation.PostConstruct;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Service
 public class TaxRegimeService {
 
-    private static final List<TaxRegimeDTO> TAX_REGIMES = List.of(
-        new TaxRegimeDTO("1", "Comun"),
-        new TaxRegimeDTO("2", "Simplificado"),
-        new TaxRegimeDTO("3", "Gran Contribuyente")
-    );
+    private final TaxRegimeRepository taxRegimeRepository;
+    private final TaxRegimeMapper taxRegimeMapper;
 
-    public List<TaxRegimeDTO> getTaxRegimes() {
-        return TAX_REGIMES;
+    public TaxRegimeService(TaxRegimeRepository taxRegimeRepository, TaxRegimeMapper taxRegimeMapper) {
+        this.taxRegimeRepository = taxRegimeRepository;
+        this.taxRegimeMapper = taxRegimeMapper;
+    }
+
+    @PostConstruct
+    public void initData() {
+        LocalDateTime now = LocalDateTime.now();
+
+        TaxRegime common = new TaxRegime();
+        common.setId("1");
+        common.setName("Común");
+        common.setStatus(TaxRegimeStatus.ACTIVE);
+        common.setCreatedDate(now);
+        common.setModifiedDate(now);
+
+        TaxRegime simplified = new TaxRegime();
+        simplified.setId("2");
+        simplified.setName("Simplificado");
+        simplified.setStatus(TaxRegimeStatus.ACTIVE);
+        simplified.setCreatedDate(now);
+        simplified.setModifiedDate(now);
+
+        TaxRegime largeTaxpayer = new TaxRegime();
+        largeTaxpayer.setId("3");
+        largeTaxpayer.setName("Gran Contribuyente");
+        largeTaxpayer.setStatus(TaxRegimeStatus.ACTIVE);
+        largeTaxpayer.setCreatedDate(now);
+        largeTaxpayer.setModifiedDate(now);
+
+        taxRegimeRepository.initializeData(List.of(common, simplified, largeTaxpayer));
+    }
+
+    public TaxRegimeDTO createTaxRegime(TaxRegimeDTO request) {
+        validateRequestBody(request);
+        validateName(request.getName());
+        validateIdNotEditable(request.getId());
+        validateNameDoesNotExist(request.getName());
+
+        TaxRegime taxRegime = taxRegimeMapper.toDomain(request);
+        LocalDateTime now = LocalDateTime.now();
+        taxRegime.setId(String.valueOf(taxRegimeRepository.findAll().size() + 1));
+        taxRegime.setStatus(TaxRegimeStatus.ACTIVE);
+        taxRegime.setCreatedDate(now);
+        taxRegime.setModifiedDate(now);
+
+        return taxRegimeMapper.toDTO(taxRegimeRepository.save(taxRegime));
+    }
+
+    public TaxRegimeDTO getTaxRegimeById(String taxRegimeId) {
+        return taxRegimeMapper.toDTO(findTaxRegimeById(taxRegimeId));
+    }
+
+    public List<TaxRegimeDTO> getTaxRegimes(String status) {
+        TaxRegimeStatus parsedStatus = parseStatus(status);
+        List<TaxRegime> taxRegimes = parsedStatus == null
+            ? taxRegimeRepository.findAll()
+            : taxRegimeRepository.findByStatus(parsedStatus);
+
+        List<TaxRegimeDTO> result = new ArrayList<>();
+        for (TaxRegime taxRegime : taxRegimes) {
+            result.add(taxRegimeMapper.toDTO(taxRegime));
+        }
+        return result;
+    }
+
+    public TaxRegimeDTO updateTaxRegime(String taxRegimeId, TaxRegimeDTO request) {
+        validateRequestBody(request);
+        validateName(request.getName());
+        validateStatus(request.getStatus());
+        validateIdNotEditable(request.getId());
+
+        TaxRegime existing = findTaxRegimeById(taxRegimeId);
+        validateNameDoesNotExistForDifferentId(request.getName(), existing.getId());
+
+        existing.setName(request.getName().trim());
+        existing.setStatus(request.getStatus());
+        existing.setModifiedDate(LocalDateTime.now());
+
+        return taxRegimeMapper.toDTO(taxRegimeRepository.save(existing));
+    }
+
+    public TaxRegimeDTO changeStatus(String taxRegimeId, String status) {
+        TaxRegimeStatus newStatus = parseRequiredStatus(status);
+
+        TaxRegime existing = findTaxRegimeById(taxRegimeId);
+        existing.setStatus(newStatus);
+        existing.setModifiedDate(LocalDateTime.now());
+
+        return taxRegimeMapper.toDTO(taxRegimeRepository.save(existing));
+    }
+
+    private TaxRegime findTaxRegimeById(String taxRegimeId) {
+        return taxRegimeRepository.findById(taxRegimeId)
+            .orElseThrow(() -> new ResourceNotFoundException("Tax regime not found with id: " + taxRegimeId));
+    }
+
+    private TaxRegimeStatus parseStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+
+        try {
+            return TaxRegimeStatus.valueOf(status.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new ValidationException("Tax regime status must be ACTIVE or INACTIVE");
+        }
+    }
+
+    private TaxRegimeStatus parseRequiredStatus(String status) {
+        TaxRegimeStatus parsedStatus = parseStatus(status);
+        if (parsedStatus == null) {
+            throw new ValidationException("Tax regime status must be ACTIVE or INACTIVE");
+        }
+        return parsedStatus;
+    }
+
+    private void validateRequestBody(TaxRegimeDTO request) {
+        if (request == null) {
+            throw new ValidationException("Tax regime request cannot be null");
+        }
+    }
+
+    private void validateName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new ValidationException("Tax regime name cannot be null or empty");
+        }
+    }
+
+    private void validateStatus(TaxRegimeStatus status) {
+        if (status == null) {
+            throw new ValidationException("Tax regime status must be ACTIVE or INACTIVE");
+        }
+    }
+
+    private void validateIdNotEditable(String id) {
+        if (id != null && !id.isBlank()) {
+            throw new BusinessException("Tax regime id cannot be modified");
+        }
+    }
+
+    private void validateNameDoesNotExist(String name) {
+        String normalizedName = name.trim();
+        if (taxRegimeRepository.existsByNameIgnoreCase(normalizedName)) {
+            throw new BusinessException("Tax regime already exists with name: " + normalizedName);
+        }
+    }
+
+    private void validateNameDoesNotExistForDifferentId(String name, String id) {
+        String normalizedName = name.trim();
+        if (taxRegimeRepository.existsByNameIgnoreCaseAndIdNot(normalizedName, id)) {
+            throw new BusinessException("Tax regime already exists with name: " + normalizedName);
+        }
     }
 }
