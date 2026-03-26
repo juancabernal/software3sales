@@ -23,10 +23,13 @@ public class CategoryDomain {
     @Column(nullable = false, unique = true)
     private String name;
 
-    @Column(nullable = false)
+    // `branchId` puede venir null desde el front; el backend permite crearlo
+    // sin asignación explícita (si tu BD actualiza el esquema con ddl-auto=update).
+    @Column(nullable = true)
     private Long branchId;
 
-    @Column(nullable = false)
+    // Durante pruebas el token/usuario puede llegar nulo; en ese caso se permite.
+    @Column(nullable = true)
     private String createdBy;
 
     @Column(nullable = false)

@@ -118,7 +118,6 @@ public class CategoryService {
     private void validateCategoryPayload(CategoryDTO request) {
         validateRequiredText(request.getType(), "type");
         validateRequiredText(request.getName(), "name");
-        validateRequiredObject(request.getBranchId(), "branchId");
         validateRequiredObject(request.getEntryDate(), "entryDate");
     }
 

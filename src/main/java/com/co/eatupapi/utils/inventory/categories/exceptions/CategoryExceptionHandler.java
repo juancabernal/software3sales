@@ -42,9 +42,10 @@ public class CategoryExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Map<String, Object>> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
         String message = "Formato de datos inválido. ";
-        if (ex.getMessage().contains("name")) {
+        String exMessage = ex.getMessage();
+        if (exMessage != null && exMessage.contains("name")) {
             message += "El nombre de la categoría debe ser texto válido.";
-        } else if (ex.getMessage().contains("UUID")) {
+        } else if (exMessage != null && exMessage.contains("UUID")) {
             message += "El id debe ser un UUID válido.";
         } else {
             message += "Verifica que los campos enviados tengan el formato correcto.";

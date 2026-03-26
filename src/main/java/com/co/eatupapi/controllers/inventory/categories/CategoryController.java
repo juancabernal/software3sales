@@ -3,6 +3,7 @@ package com.co.eatupapi.controllers.inventory.categories;
 import com.co.eatupapi.dto.inventory.categories.CategoryDTO;
 import com.co.eatupapi.dto.inventory.categories.CategoryStatusUpdateDTO;
 import com.co.eatupapi.services.inventory.categories.CategoryService;
+import java.security.Principal;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,8 +28,12 @@ public class CategoryController {
     }
 
     @PostMapping
-    public ResponseEntity<CategoryDTO> createCategory(@RequestBody CategoryDTO request) {
-        CategoryDTO saved = categoryService.createCategory(request, "admin");
+    public ResponseEntity<CategoryDTO> createCategory(
+            @RequestBody CategoryDTO request,
+            Principal principal
+    ) {
+        String username = principal.getName();
+        CategoryDTO saved = categoryService.createCategory(request, username);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
@@ -45,15 +50,19 @@ public class CategoryController {
     }
 
     @PutMapping("/{categoryId}")
-    public ResponseEntity<CategoryDTO> updateCategory(@PathVariable String categoryId,
-                                                      @RequestBody CategoryDTO request) {
+    public ResponseEntity<CategoryDTO> updateCategory(
+            @PathVariable String categoryId,
+            @RequestBody CategoryDTO request
+    ) {
         CategoryDTO updated = categoryService.updateCategory(categoryId, request);
         return ResponseEntity.ok(updated);
     }
 
     @PatchMapping("/{categoryId}/status")
-    public ResponseEntity<CategoryDTO> updateStatus(@PathVariable String categoryId,
-                                                    @RequestBody CategoryStatusUpdateDTO request) {
+    public ResponseEntity<CategoryDTO> updateStatus(
+            @PathVariable String categoryId,
+            @RequestBody CategoryStatusUpdateDTO request
+    ) {
         CategoryDTO updated = categoryService.updateStatus(categoryId, request.getStatus());
         return ResponseEntity.ok(updated);
     }
