@@ -52,9 +52,9 @@ public class CategoryController {
     @PutMapping("/{categoryId}")
     public ResponseEntity<CategoryDTO> updateCategory(
             @PathVariable String categoryId,
-            @RequestBody CategoryDTO request
+            @RequestBody CategoryStatusUpdateDTO request
     ) {
-        CategoryDTO updated = categoryService.updateCategory(categoryId, request);
+        CategoryDTO updated = categoryService.updateStatus(categoryId, request.getStatus());
         return ResponseEntity.ok(updated);
     }
 
@@ -65,5 +65,20 @@ public class CategoryController {
     ) {
         CategoryDTO updated = categoryService.updateStatus(categoryId, request.getStatus());
         return ResponseEntity.ok(updated);
+    }
+
+    /**
+     * Sin Spring Security, {@link Principal} suele ser {@code null}. Prioridad: usuario
+     * autenticado si existe; si no, {@code createdBy} del body (p. ej. pruebas); si no,
+     * {@code null} (columna {@code created_by} nullable).
+     */
+    private static String resolveCreatedBy(Principal principal, CategoryDTO request) {
+        if (principal != null && principal.getName() != null && !principal.getName().isBlank()) {
+            return principal.getName();
+        }
+        if (request.getCreatedBy() != null && !request.getCreatedBy().isBlank()) {
+            return request.getCreatedBy();
+        }
+        return null;
     }
 }

@@ -50,28 +50,12 @@ public class CategoryService {
     public List<CategoryDTO> getCategories(String status) {
         CategoryStatus parsedStatus = parseStatus(status);
 
-        return categoryRepository.findAll().stream()
-                .filter(category -> parsedStatus == null || category.getStatus() == parsedStatus)
+        List<CategoryDomain> rows = parsedStatus == null
+                ? categoryRepository.findAll()
+                : categoryRepository.findByStatus(parsedStatus);
+        return rows.stream()
                 .map(categoryMapper::toDto)
                 .collect(Collectors.toList());
-    }
-
-    public CategoryDTO updateCategory(String categoryId, CategoryDTO request) {
-        validateCategoryPayload(request);
-
-        CategoryDomain existing = categoryRepository.findById(parseUuid(categoryId))
-                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + categoryId));
-
-        validateCategoryNameForUpdate(existing, request.getName());
-
-        existing.setType(request.getType());
-        existing.setName(request.getName());
-        existing.setBranchId(request.getBranchId());
-        existing.setEntryDate(request.getEntryDate());
-        existing.setModifiedDate(LocalDateTime.now());
-
-        CategoryDomain updatedCategory = categoryRepository.save(existing);
-        return categoryMapper.toDto(updatedCategory);
     }
 
     public CategoryDTO updateStatus(String categoryId, String status) {
@@ -137,15 +121,6 @@ public class CategoryService {
         categoryRepository.findByName(name)
                 .ifPresent(category -> {
                     throw new BusinessException("A category with this name already exists");
-                });
-    }
-
-    private void validateCategoryNameForUpdate(CategoryDomain existing, String requestedName) {
-        categoryRepository.findByName(requestedName)
-                .ifPresent(category -> {
-                    if (!category.getId().equals(existing.getId())) {
-                        throw new BusinessException("A category with this name already exists");
-                    }
                 });
     }
 }

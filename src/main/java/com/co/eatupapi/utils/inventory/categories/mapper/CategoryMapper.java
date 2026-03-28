@@ -39,4 +39,17 @@ public class CategoryMapper {
         categoryDomain.setModifiedDate(dto.getModifiedDate());
         return categoryDomain;
     }
+
+    /**
+     * Solo campos que el cliente puede enviar al crear. Evita parsear {@code id} inválido
+     * y no copia auditoría/estado que el servicio asigna después.
+     */
+    public CategoryDomain toNewEntity(CategoryDTO dto) {
+        CategoryDomain entity = new CategoryDomain();
+        entity.setType(dto.getType());
+        entity.setName(dto.getName());
+        entity.setBranchId(dto.getBranchId());
+        entity.setEntryDate(dto.getEntryDate());
+        return entity;
+    }
 }
