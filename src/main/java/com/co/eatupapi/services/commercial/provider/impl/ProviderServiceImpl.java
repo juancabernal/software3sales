@@ -7,9 +7,15 @@ import java.util.UUID;
 
 import com.co.eatupapi.domain.commercial.provider.ProviderDomain;
 import com.co.eatupapi.domain.commercial.provider.ProviderStatus;
+import com.co.eatupapi.domain.commercial.taxRegime.TaxRegimeStatus;
 import com.co.eatupapi.dto.commercial.provider.ProviderDTO;
+import com.co.eatupapi.dto.commercial.taxRegime.TaxRegimeDTO;
+import com.co.eatupapi.dto.inventory.location.LocationResponseDTO;
 import com.co.eatupapi.repositories.commercial.provider.ProviderRepository;
 import com.co.eatupapi.services.commercial.provider.ProviderService;
+import com.co.eatupapi.services.commercial.taxRegime.TaxRegimeService;
+import com.co.eatupapi.services.inventory.location.LocationService;
+import com.co.eatupapi.services.user.CatalogService;
 import com.co.eatupapi.utils.commercial.provider.exceptions.BusinessException;
 import com.co.eatupapi.utils.commercial.provider.exceptions.ResourceNotFoundException;
 import com.co.eatupapi.utils.commercial.provider.exceptions.ValidationException;
@@ -24,18 +30,28 @@ public class ProviderServiceImpl implements ProviderService {
 
     private final ProviderRepository providerRepository;
     private final ProviderMapper providerMapper;
+    private final CatalogService catalogService;
+    private final LocationService locationService;
+    private final TaxRegimeService taxRegimeService;
 
     public ProviderServiceImpl(
             ProviderRepository providerRepository,
-            ProviderMapper providerMapper
+            ProviderMapper providerMapper,
+            CatalogService catalogService,
+            LocationService locationService,
+            TaxRegimeService taxRegimeService
     ) {
         this.providerRepository = providerRepository;
         this.providerMapper = providerMapper;
+        this.catalogService = catalogService;
+        this.locationService = locationService;
+        this.taxRegimeService = taxRegimeService;
     }
 
     @Override
     public ProviderDTO createProvider(ProviderDTO request) {
         validateProviderPayload(request);
+        validateExternalReferences(request);
         validateEmailNotExists(request.getEmail());
 
         ProviderDomain provider = providerMapper.toDomain(request);
@@ -68,6 +84,7 @@ public class ProviderServiceImpl implements ProviderService {
     @Override
     public ProviderDTO updateProvider(String providerId, ProviderDTO request) {
         validateProviderPayload(request);
+        validateExternalReferences(request);
 
         ProviderDomain existing = findProviderById(providerId);
         validateImmutableEmail(existing.getEmail(), request.getEmail());
@@ -141,6 +158,72 @@ public class ProviderServiceImpl implements ProviderService {
         ValidationUtils.validatePhone(request.getPhone());
         ValidationUtils.validateNumericValue(request.getDocumentNumber(),
                 "Document number must contain only numeric characters");
+    }
+
+    private void validateExternalReferences(ProviderDTO request) {
+        validateDocumentType(request.getDocumentTypeId());
+        validateDepartment(request.getDepartmentId());
+        validateCity(request.getCityId(), request.getDepartmentId());
+        validateBranch(request.getBranchId());
+        validateTaxRegime(request.getTaxRegimeId());
+    }
+
+    private void validateDocumentType(Long documentTypeId) {
+        UUID documentTypeUuid = toCatalogUuid(documentTypeId);
+        if (!catalogService.documentTypeExists(documentTypeUuid)) {
+            throw new ResourceNotFoundException("Document type not found or inactive: " + documentTypeId);
+        }
+    }
+
+    private void validateDepartment(Long departmentId) {
+        UUID departmentUuid = toCatalogUuid(departmentId);
+        if (!catalogService.departmentExists(departmentUuid)) {
+            throw new ResourceNotFoundException("Department not found or inactive: " + departmentId);
+        }
+    }
+
+    private void validateCity(Long cityId, Long departmentId) {
+        UUID cityUuid = toCatalogUuid(cityId);
+        UUID departmentUuid = toCatalogUuid(departmentId);
+
+        boolean cityExists = catalogService.cityExists(cityUuid);
+        boolean cityBelongsToDepartment = catalogService.getCities(departmentUuid).stream()
+                .anyMatch(city -> cityUuid.equals(city.getId()));
+
+        if (!cityExists || !cityBelongsToDepartment) {
+            throw new ResourceNotFoundException("City not found or does not belong to department: " + cityId);
+        }
+    }
+
+    private void validateBranch(Long branchId) {
+        LocationResponseDTO branch;
+        try {
+            branch = locationService.findById(branchId.toString());
+        } catch (RuntimeException ex) {
+            throw new ResourceNotFoundException("Branch not found or inactive: " + branchId);
+        }
+
+        if (!branch.isActive()) {
+            throw new BusinessException("Branch not found or inactive: " + branchId);
+        }
+    }
+
+    private void validateTaxRegime(Long taxRegimeId) {
+        String taxRegimeUuid = toCatalogUuid(taxRegimeId).toString();
+        TaxRegimeDTO taxRegime;
+        try {
+            taxRegime = taxRegimeService.getTaxRegimeById(taxRegimeUuid);
+        } catch (RuntimeException ex) {
+            throw new ResourceNotFoundException("Tax regime not found or inactive: " + taxRegimeId);
+        }
+
+        if (taxRegime.getStatus() != TaxRegimeStatus.ACTIVE) {
+            throw new BusinessException("Tax regime not found or inactive: " + taxRegimeId);
+        }
+    }
+
+    private UUID toCatalogUuid(Long id) {
+        return new UUID(0L, id);
     }
 
     private void validateEmailNotExists(String email) {
