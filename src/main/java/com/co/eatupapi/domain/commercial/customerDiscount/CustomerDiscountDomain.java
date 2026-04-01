@@ -1,4 +1,4 @@
-package com.co.eatupapi.domain.commercial.discount;
+package com.co.eatupapi.domain.commercial.customerDiscount;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -8,28 +8,29 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "discounts")
-public class DiscountDomain {
+@Table(name = "customer_discounts")
+public class CustomerDiscountDomain {
 
     @Id
     @GeneratedValue
     private UUID id;
 
     @Column(nullable = false)
-    private UUID categoryId;
+    private UUID locationId;
 
     @Column(nullable = false)
-    private Integer percentage;
+    private UUID customerId;
 
     @Column(nullable = false)
-    private String description;
+    private UUID discountId;
 
     @Column(nullable = false)
-    private Boolean status;
+    private LocalDate assignedAt;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
@@ -37,15 +38,15 @@ public class DiscountDomain {
     @Column
     private LocalDateTime modifiedAt;
 
-    public DiscountDomain() {
+    public CustomerDiscountDomain() {
     }
 
-    public DiscountDomain(UUID id, UUID categoryId, Integer percentage, String description, Boolean status) {
+    public CustomerDiscountDomain(UUID id, UUID locationId, UUID customerId, UUID discountId, LocalDate assignedAt) {
         this.id = id;
-        this.categoryId = categoryId;
-        this.percentage = percentage;
-        this.description = description;
-        this.status = status;
+        this.locationId = locationId;
+        this.customerId = customerId;
+        this.discountId = discountId;
+        this.assignedAt = assignedAt;
     }
 
     @PrePersist
@@ -66,36 +67,36 @@ public class DiscountDomain {
         this.id = id;
     }
 
-    public UUID getCategoryId() {
-        return categoryId;
+    public UUID getLocationId() {
+        return locationId;
     }
 
-    public void setCategoryId(UUID categoryId) {
-        this.categoryId = categoryId;
+    public void setLocationId(UUID locationId) {
+        this.locationId = locationId;
     }
 
-    public Integer getPercentage() {
-        return percentage;
+    public UUID getCustomerId() {
+        return customerId;
     }
 
-    public void setPercentage(Integer percentage) {
-        this.percentage = percentage;
+    public void setCustomerId(UUID customerId) {
+        this.customerId = customerId;
     }
 
-    public String getDescription() {
-        return description;
+    public UUID getDiscountId() {
+        return discountId;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
+    public void setDiscountId(UUID discountId) {
+        this.discountId = discountId;
     }
 
-    public Boolean getStatus() {
-        return status;
+    public LocalDate getAssignedAt() {
+        return assignedAt;
     }
 
-    public void setStatus(Boolean status) {
-        this.status = status;
+    public void setAssignedAt(LocalDate assignedAt) {
+        this.assignedAt = assignedAt;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -114,3 +115,4 @@ public class DiscountDomain {
         this.modifiedAt = modifiedAt;
     }
 }
+
