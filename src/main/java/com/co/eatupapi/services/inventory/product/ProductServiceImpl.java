@@ -9,9 +9,12 @@ import com.co.eatupapi.utils.inventory.product.exceptions.BusinessException;
 import com.co.eatupapi.utils.inventory.product.exceptions.ResourceNotFoundException;
 import com.co.eatupapi.utils.inventory.product.exceptions.ValidationException;
 import com.co.eatupapi.utils.inventory.product.mapper.ProductMapper;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -34,11 +37,18 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public List<ProductDTO> findAll() {
-        return productRepository.findAll()
-                .stream()
-                .map(productMapper::toDto)
-                .toList(); // S1: reemplaza Collectors.toList()
+    public Page<ProductDTO> findAll(int page, int size, String name) {
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        if (name != null && !name.isBlank()) {
+            return productRepository
+                    .findByNameContainingIgnoreCase(name, pageable)
+                    .map(productMapper::toDto);
+        }
+
+        return productRepository.findAll(pageable)
+                .map(productMapper::toDto);
     }
 
     @Override
