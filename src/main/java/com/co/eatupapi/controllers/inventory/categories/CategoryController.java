@@ -3,6 +3,7 @@ package com.co.eatupapi.controllers.inventory.categories;
 import com.co.eatupapi.dto.inventory.categories.CategoryDTO;
 import com.co.eatupapi.dto.inventory.categories.CategoryStatusUpdateDTO;
 import com.co.eatupapi.services.inventory.categories.CategoryService;
+import com.co.eatupapi.utils.inventory.categories.exceptions.ValidationException;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -48,6 +49,10 @@ public class CategoryController {
             @PathVariable String categoryId,
             @RequestBody CategoryStatusUpdateDTO request
     ) {
+        if (request == null) {
+            throw new ValidationException("Request body is required");
+        }
+
         CategoryDTO updated = categoryService.updateStatus(categoryId, request.getStatus());
         return ResponseEntity.ok(updated);
     }

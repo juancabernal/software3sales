@@ -14,6 +14,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.core.NestedExceptionUtils;
 
 @Service
 public class CategoryService {
@@ -26,9 +28,11 @@ public class CategoryService {
         this.categoryMapper = categoryMapper;
     }
 
+    @Transactional
     public CategoryDTO createCategory(CategoryDTO request) {
         validateCategoryPayload(request);
         validateCategoryNameDoesNotExist(request.getName());
+        categoryRepository.lockCategoryCnsCounter();
 
         CategoryDomain categoryDomain = categoryMapper.toNewEntity(request);
         categoryDomain.setId(UUID.randomUUID());
@@ -58,6 +62,7 @@ public class CategoryService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
     public CategoryDTO updateStatus(String categoryId, String status) {
         CategoryStatus newStatus = parseRequiredStatus(status);
 
@@ -138,12 +143,34 @@ public class CategoryService {
             try {
                 return categoryRepository.saveAndFlush(categoryDomain);
             } catch (DataIntegrityViolationException ex) {
-                if (categoryRepository.findByName(categoryName).isPresent()) {
+                if (categoryRepository.findByName(categoryName).isPresent() || isDuplicateNameViolation(ex)) {
                     throw new BusinessException("A category with this name already exists");
+                }
+
+                if (!isDuplicateCnsViolation(ex)) {
+                    throw ex;
                 }
             }
         }
 
         throw new BusinessException("The category could not be created due to a concurrent save conflict");
+    }
+
+    private boolean isDuplicateNameViolation(DataIntegrityViolationException ex) {
+        return containsConstraintHint(ex, "categories_name")
+                || containsConstraintHint(ex, "uk")
+                && containsConstraintHint(ex, "name");
+    }
+
+    private boolean isDuplicateCnsViolation(DataIntegrityViolationException ex) {
+        return containsConstraintHint(ex, "categories_cns")
+                || containsConstraintHint(ex, "uk")
+                && containsConstraintHint(ex, "cns");
+    }
+
+    private boolean containsConstraintHint(DataIntegrityViolationException ex, String hint) {
+        Throwable rootCause = NestedExceptionUtils.getMostSpecificCause(ex);
+        String message = rootCause != null ? rootCause.getMessage() : ex.getMessage();
+        return message != null && message.toLowerCase().contains(hint.toLowerCase());
     }
 }

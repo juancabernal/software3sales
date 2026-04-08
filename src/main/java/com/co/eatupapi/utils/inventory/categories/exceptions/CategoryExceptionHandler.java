@@ -51,10 +51,16 @@ public class CategoryExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Map<String, Object>> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
-        String message = "Formato de datos inválido. ";
         String exMessage = ex.getMessage();
+        if (exMessage != null && exMessage.contains("Required request body is missing")) {
+            return buildRawErrorResponse("Request body is required", "VALIDATION_ERROR", HttpStatus.BAD_REQUEST);
+        }
+
+        String message = "Formato de datos inválido. ";
         if (exMessage != null && exMessage.contains("name")) {
             message += "El nombre de la categoría debe ser texto válido.";
+        } else if (exMessage != null && exMessage.contains("status")) {
+            message += "El estado de la categoría debe ser ACTIVE o INACTIVE.";
         } else if (exMessage != null && exMessage.contains("UUID")) {
             message += "El id debe ser un UUID válido.";
         } else {
