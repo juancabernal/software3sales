@@ -20,22 +20,26 @@ public class CreateRecipeService {
     private final RecipeMapper mapper;
     private final GenerateRecipeIdService idService;
     private final RecipeValidatorService recipeValidator;
+    private final RecipeExistenceValidatorService existenceValidator;
 
     public CreateRecipeService(
             RecipeRepository repo,
             RecipeMapper mapper,
             GenerateRecipeIdService idService,
-            RecipeValidatorService recipeValidator
+            RecipeValidatorService recipeValidator,
+            RecipeExistenceValidatorService existenceValidator
     ) {
         this.repo = repo;
         this.mapper = mapper;
         this.idService = idService;
         this.recipeValidator = recipeValidator;
+        this.existenceValidator = existenceValidator;
     }
 
     @Transactional
     public void run(RecipeRequest request) {
         validatePreviousExistence(request.getName());
+        existenceValidator.run(request.getSubRecipeIds());
         UUID id = idService.run();
         RecipeDomain recipe = mapper.toNewDomain(request, id);
         recipeValidator.validate(recipe);
