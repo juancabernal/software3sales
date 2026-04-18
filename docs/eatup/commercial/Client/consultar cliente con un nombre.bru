@@ -5,15 +5,12 @@ meta {
 }
 
 get {
-  url: http://localhost:8080/commercial/api/v1/clients?name=juan
+  url: http://localhost:8080/commercial/api/v1/{name}
   body: none
   auth: inherit
 }
 
-params:query {
-  name: juan
-}
-
 settings {
   encodeUrl: true
+  timeout: 0
 }

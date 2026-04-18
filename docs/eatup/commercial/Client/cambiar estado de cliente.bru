@@ -5,11 +5,18 @@ meta {
 }
 
 patch {
-  url: http://localhost:8080/commercial/api/v1/clients/client-002/status
-  body: none
+  url: http://localhost:8080/commercial/api/v1/clients/{id}/status
+  body: json
   auth: inherit
+}
+
+body:json {
+  {
+   "active": false
+  }
 }
 
 settings {
   encodeUrl: true
+  timeout: 0
 }

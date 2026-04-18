@@ -5,15 +5,12 @@ meta {
 }
 
 get {
-  url: http://localhost:8080/commercial/api/v1/clients?applyDiscounts=true
+  url: http://localhost:8080/commercial/api/v1/{applyDiscounts}
   body: none
   auth: inherit
 }
 
-params:query {
-  applyDiscounts: true
-}
-
 settings {
   encodeUrl: true
+  timeout: 0
 }
