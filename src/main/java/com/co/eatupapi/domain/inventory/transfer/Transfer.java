@@ -1,7 +1,9 @@
 package com.co.eatupapi.domain.inventory.transfer;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "transfers")
@@ -13,10 +15,10 @@ public class Transfer {
     private Long idTraslado;
 
     @Column(name = "sede_origen", nullable = false)
-    private Long sedeOrigen;
+    private String sedeOrigen;
 
     @Column(name = "sede_destino", nullable = false)
-    private Long sedeDestino;
+    private String sedeDestino;
 
     @Column(name = "fecha", nullable = false)
     private LocalDateTime fecha;
@@ -25,10 +27,10 @@ public class Transfer {
     private String responsable;
 
     @Column(name = "producto", nullable = false)
-    private Long producto;
+    private UUID producto;
 
-    @Column(name = "stock", nullable = false)
-    private Integer stock;
+    @Column(name = "stock", nullable = false, precision = 15, scale = 3)
+    private BigDecimal stock;
 
     @Column(name = "cantidad", nullable = false)
     private Integer cantidad;
@@ -47,13 +49,14 @@ public class Transfer {
     private LocalDateTime updatedAt;
 
     public Transfer() {
+        // Required by JPA.
     }
 
     @PrePersist
     public void prePersist() {
         LocalDateTime now = LocalDateTime.now();
         if (this.estado == null) {
-            this.estado = TransferStatus.PENDIENTE;
+            this.estado = TransferStatus.EN_TRANSITO;
         }
         if (this.createdAt == null) {
             this.createdAt = now;
@@ -74,19 +77,19 @@ public class Transfer {
         this.idTraslado = idTraslado;
     }
 
-    public Long getSedeOrigen() {
+    public String getSedeOrigen() {
         return sedeOrigen;
     }
 
-    public void setSedeOrigen(Long sedeOrigen) {
+    public void setSedeOrigen(String sedeOrigen) {
         this.sedeOrigen = sedeOrigen;
     }
 
-    public Long getSedeDestino() {
+    public String getSedeDestino() {
         return sedeDestino;
     }
 
-    public void setSedeDestino(Long sedeDestino) {
+    public void setSedeDestino(String sedeDestino) {
         this.sedeDestino = sedeDestino;
     }
 
@@ -106,19 +109,19 @@ public class Transfer {
         this.responsable = responsable;
     }
 
-    public Long getProducto() {
+    public UUID getProducto() {
         return producto;
     }
 
-    public void setProducto(Long producto) {
+    public void setProducto(UUID producto) {
         this.producto = producto;
     }
 
-    public Integer getStock() {
+    public BigDecimal getStock() {
         return stock;
     }
 
-    public void setStock(Integer stock) {
+    public void setStock(BigDecimal stock) {
         this.stock = stock;
     }
 
