@@ -1,10 +1,12 @@
 package com.co.eatupapi.dto.commercial.sales;
 
 import java.util.List;
+import java.util.UUID;
 
 public class SaleRequestDTO {
 
     private String sellerId;
+    private UUID locationId;
     private String tableId;
     private List<SaleDetailDTO> details;
 
@@ -14,6 +16,14 @@ public class SaleRequestDTO {
 
     public void setSellerId(String sellerId) {
         this.sellerId = sellerId;
+    }
+
+    public UUID getLocationId() {
+        return locationId;
+    }
+
+    public void setLocationId(UUID locationId) {
+        this.locationId = locationId;
     }
 
     public String getTableId() {

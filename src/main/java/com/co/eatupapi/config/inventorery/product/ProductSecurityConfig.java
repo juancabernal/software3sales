@@ -1,40 +1,39 @@
-package com.co.eatupapi.utils.commercial.seller.security;
+package com.co.eatupapi.config.inventorery.product;
 
 import com.co.eatupapi.config.user.JwtAuthenticationFilter;
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import jakarta.servlet.http.HttpServletResponse;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Configuration
-public class SellerSecurityConfig {
+public class ProductSecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final ObjectMapper objectMapper;
 
-    public SellerSecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
-                                ObjectMapper objectMapper) {
+    public ProductSecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                                 ObjectMapper objectMapper) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.objectMapper = objectMapper;
     }
 
     @Bean
     @Order(0)
-    @SuppressWarnings({"java:S112", "java:S1130"}) // Spring Security API requires throws Exception
-    public SecurityFilterChain sellerSecurityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain productSecurityFilterChain(HttpSecurity http) throws Exception {
         http
-                .securityMatcher("/comercialapi/v1/sellers/**")
+                .securityMatcher("/inventory/product/**")
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
@@ -47,7 +46,7 @@ public class SellerSecurityConfig {
                                         response,
                                         HttpStatus.UNAUTHORIZED,
                                         "Token requerido para acceder a este recurso",
-                                        "SELLER_UNAUTHORIZED"
+                                        "PRODUCT_UNAUTHORIZED"
                                 )
                         )
                         .accessDeniedHandler((request, response, accessDeniedException) ->
@@ -55,7 +54,7 @@ public class SellerSecurityConfig {
                                         response,
                                         HttpStatus.FORBIDDEN,
                                         "No tienes permisos para realizar esta acción",
-                                        "SELLER_FORBIDDEN"
+                                        "PRODUCT_FORBIDDEN"
                                 )
                         )
                 )

@@ -7,36 +7,50 @@ meta {
 post {
   url: http://localhost:8080/comercialapi/v1/sellers
   body: json
-  auth: bearer
-}
-
-auth:bearer {
-  token: eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0MUBnbWFpbC5jb20iLCJpYXQiOjE3NzU4ODU4MTEsImV4cCI6MTc3NTkxNDYxMX0.1heIHZubyrnsZ9AiPphp-wRf0lbgH4on2URmFbXrKdsnZkMnrrZ7Nl6nucWpwA74
+  auth: inherit
 }
 
 body:json {
   {
     "documentTypeId": "b9734b27-272a-418a-aba9-3ceb4864e39b",
     "locationId": "550e8400-e29b-41d4-a716-446655440000",
-    "identificationNumber": "1234560890",
+    "identificationNumber": "11221691434",
     "firstName": "Juan",
     "lastName": "Perez",
-    "phone": "3001934567",
-    "email": "juan.pe6rez@email.com",
+    "phone": "3002226322",
+    "email": "juan@gmail.com",
     "commissionPercentage": 10.5
   }
 }
 
 script:post-response {
+  const data = res.getBody();
+  if (data && data.id) {
+    bru.setVar("sellerId", data.id);
+    bru.setVar("sellerPhone", data.phone);
+    bru.setVar("sellerEmail", data.email);
+  }
+}
+
+tests {
   test("Status code is 201", function() {
     expect(res.getStatus()).to.equal(201);
   });
   
-  const data = res.getBody();
-  if (data && data.id) {
-    bru.setVar("sellerId", data.id);
-    console.log("Seller ID guardado: " + data.id);
-  }
+  test("Response has seller id", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("id");
+  });
+  
+  test("Email is saved in lowercase", function() {
+    const body = res.getBody();
+    expect(body.email).to.equal(body.email.toLowerCase());
+  })
+  
+  test("Status is ACTIVE", function() {
+    const body = res.getBody();
+    expect(body.status).to.equal("ACTIVE");
+  });
 }
 
 settings {

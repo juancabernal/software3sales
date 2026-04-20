@@ -52,7 +52,11 @@ public class Transfer {
     private LocalDateTime updatedAt;
 
     public Transfer() {
+<<<<<<< HEAD
         // Required by JPA.
+=======
+        // Required by JPA for entity instantiation
+>>>>>>> develop
     }
 
     @PrePersist
