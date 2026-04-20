@@ -13,8 +13,11 @@ public record TransferRequestDTO(
         @NotBlank(message = "La sede de destino es obligatoria")
         String sedeDestino,
 
-        @NotNull(message = "La fecha es obligatoria")
-        LocalDateTime fecha,
+        @NotNull(message = "La fecha de envio es obligatoria")
+        LocalDateTime fechaEnvio,
+
+        @NotNull(message = "La fecha de llegada es obligatoria")
+        LocalDateTime fechaLlegada,
 
         @NotBlank(message = "El responsable es obligatorio")
         String responsable,

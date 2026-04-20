@@ -20,8 +20,11 @@ public class Transfer {
     @Column(name = "sede_destino", nullable = false)
     private String sedeDestino;
 
-    @Column(name = "fecha", nullable = false)
-    private LocalDateTime fecha;
+    @Column(name = "fecha envio", nullable = false)
+    private LocalDateTime fechaEnvio;
+
+    @Column(name = "fecha llegada", nullable = false)
+    private LocalDateTime fechaLlegada;
 
     @Column(name = "responsable", nullable = false)
     private String responsable;
@@ -93,12 +96,20 @@ public class Transfer {
         this.sedeDestino = sedeDestino;
     }
 
-    public LocalDateTime getFecha() {
-        return fecha;
+    public LocalDateTime getFechaEnvio() {
+        return fechaEnvio;
     }
 
-    public void setFecha(LocalDateTime fecha) {
-        this.fecha = fecha;
+    public void setFechaEnvio(LocalDateTime fechaEnvio) {
+        this.fechaEnvio = fechaEnvio;
+    }
+
+    public LocalDateTime getFechaLlegada() {
+        return fechaLlegada;
+    }
+
+    public void setFechaLlegada(LocalDateTime fechaLlegada) {
+        this.fechaLlegada = fechaLlegada;
     }
 
     public String getResponsable() {

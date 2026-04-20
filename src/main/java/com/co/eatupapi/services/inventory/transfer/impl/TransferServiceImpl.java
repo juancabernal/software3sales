@@ -147,7 +147,7 @@ public class TransferServiceImpl implements TransferService {
     }
 
     private void validateCoreFields(TransferRequestDTO request) {
-        if (request.fecha() == null) {
+        if (request.fechaEnvio() == null) {
             throw new TransferValidationException("La fecha de transferencia es obligatoria");
         }
         if (request.responsable() == null || request.responsable().isBlank()) {
