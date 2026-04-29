@@ -44,12 +44,7 @@ public class PurchaseServiceImpl implements PurchaseService {
         domain.setDeleted(false);
         domain.markAsCreated();
 
-        List<PurchaseItemDomain> items = request.getItems().stream()
-                .map(purchaseMapper::toItemDomain)
-                .peek(item -> {
-                    item.assignTimestamps();
-                })
-                .toList();
+        List<PurchaseItemDomain> items = mapItems(request);
 
         domain.replaceItems(items);
 
@@ -92,12 +87,7 @@ public class PurchaseServiceImpl implements PurchaseService {
 
         existing.setProviderId(request.getProviderId());
 
-        List<PurchaseItemDomain> newItems = request.getItems().stream()
-                .map(purchaseMapper::toItemDomain)
-                .peek(item -> {
-                    item.assignTimestamps();
-                })
-                .toList();
+        List<PurchaseItemDomain> newItems = mapItems(request);
 
         existing.replaceItems(newItems);
         existing.markAsModified();
@@ -144,6 +134,13 @@ public class PurchaseServiceImpl implements PurchaseService {
 
         existing.softDelete();
         purchaseRepository.save(existing);
+    }
+
+    private List<PurchaseItemDomain> mapItems(CreatePurchaseRequest request) {
+        return request.getItems().stream()
+                .map(purchaseMapper::toItemDomain)
+                .map(PurchaseItemDomain::initialize)
+                .toList();
     }
 
     private PurchaseDomain findByIdOrThrow(UUID id, UUID locationId) {

@@ -77,7 +77,7 @@ public class PurchaseExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleBusiness(
             PurchaseBusinessException ex, HttpServletRequest request) {
 
-        return build(HttpStatus.UNPROCESSABLE_ENTITY,
+        return build(HttpStatus.UNPROCESSABLE_CONTENT,
                 ex.getErrorCode(),
                 ex.getMessage(),
                 request);
