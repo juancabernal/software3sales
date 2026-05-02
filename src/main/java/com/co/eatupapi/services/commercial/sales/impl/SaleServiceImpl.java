@@ -1,22 +1,23 @@
 package com.co.eatupapi.services.commercial.sales.impl;
 
-import com.co.eatupapi.domain.commercial.sales.SaleDetailDomain;
-import com.co.eatupapi.domain.commercial.sales.SaleDomain;
-import com.co.eatupapi.domain.commercial.sales.SaleStatus;
+import com.co.eatupapi.dto.commercial.sales.SaleAsyncResponseDTO;
 import com.co.eatupapi.dto.commercial.sales.SaleDetailDTO;
 import com.co.eatupapi.dto.commercial.sales.SalePatchDTO;
 import com.co.eatupapi.dto.commercial.sales.SaleRequestDTO;
 import com.co.eatupapi.dto.commercial.sales.SaleResponseDTO;
+import com.co.eatupapi.messaging.commercial.sales.SaleEventPublisher;
+import com.co.eatupapi.messaging.commercial.sales.dto.SaleDetailEventMessage;
+import com.co.eatupapi.messaging.commercial.sales.dto.SaleEventMessage;
+import com.co.eatupapi.messaging.commercial.sales.dto.SaleEventType;
 import com.co.eatupapi.repositories.commercial.sales.SaleRepository;
-import com.co.eatupapi.services.commercial.sales.RecipePreparationTraceService;
 import com.co.eatupapi.services.commercial.sales.SaleService;
-import com.co.eatupapi.services.commercial.sales.SaleStockValidatorService;
-import com.co.eatupapi.utils.commercial.sales.exceptions.SaleBusinessException;
 import com.co.eatupapi.utils.commercial.sales.exceptions.SaleNotFoundException;
 import com.co.eatupapi.utils.commercial.sales.exceptions.SaleValidationException;
 import com.co.eatupapi.utils.commercial.sales.mapper.SaleMapper;
 import com.co.eatupapi.utils.commercial.sales.validation.ValidationUtils;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -24,171 +25,64 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SaleServiceImpl implements SaleService {
-
     private static final String VENTA_NO_ENCONTRADA = "No existe una venta con el id: ";
-
     private final SaleRepository saleRepository;
     private final SaleMapper saleMapper;
-    private final SaleStockValidatorService saleStockValidatorService;
-    private final RecipePreparationTraceService traceService;
+    private final SaleEventPublisher saleEventPublisher;
 
-    public SaleServiceImpl(SaleRepository saleRepository,
-                           SaleMapper saleMapper,
-                           SaleStockValidatorService saleStockValidatorService,
-                           RecipePreparationTraceService traceService) {
+    public SaleServiceImpl(SaleRepository saleRepository, SaleMapper saleMapper, SaleEventPublisher saleEventPublisher) {
         this.saleRepository = saleRepository;
         this.saleMapper = saleMapper;
-        this.saleStockValidatorService = saleStockValidatorService;
-        this.traceService = traceService;
+        this.saleEventPublisher = saleEventPublisher;
     }
 
-    @Override
-    @Transactional
-    public SaleResponseDTO createSale(SaleRequestDTO request) {
+    @Override @Transactional
+    public SaleAsyncResponseDTO createSale(SaleRequestDTO request) {
         validateRequiredSalePayload(request);
-        validateSaleLineItems(request.getDetails());
-        saleStockValidatorService.validateStockForSaleDetails(request.getDetails());
-
-        SaleDomain sale = new SaleDomain();
-        sale.setSellerId(request.getSellerId().trim());
-        sale.setLocationId(request.getLocationId());
-        sale.setTableId(request.getTableId().trim());
-        sale.setStatus(SaleStatus.CREATED);
-
-        BigDecimal totalAmount = processSaleDetails(sale, request.getDetails());
-        sale.setTotalAmount(totalAmount);
-
-        SaleDomain savedSale = saleRepository.save(sale);
-        traceService.createInitialTraces(savedSale);
-
-        return saleMapper.toDto(savedSale);
+        UUID saleId = UUID.randomUUID();
+        SaleEventMessage message = buildEventMessage(SaleEventType.SALE_CREATE_REQUESTED, saleId, request.getSellerId(), request.getLocationId(), request.getTableId(), request.getDetails());
+        saleEventPublisher.publishSaleCreateRequested(message);
+        return buildAsyncResponse(saleId, "Solicitud de creación de venta enviada a procesamiento.", SaleEventType.SALE_CREATE_REQUESTED);
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public SaleResponseDTO getSaleById(UUID id) {
-        SaleDomain sale = findSaleOrThrow(id);
-        return saleMapper.toDto(sale);
-    }
+    @Override @Transactional(readOnly = true)
+    public SaleResponseDTO getSaleById(UUID id) { return saleMapper.toDto(saleRepository.findById(id).orElseThrow(() -> new SaleNotFoundException(VENTA_NO_ENCONTRADA + id))); }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<SaleResponseDTO> getAllSales() {
-        return saleRepository.findAll().stream()
-                .map(saleMapper::toDto)
-                .toList();
-    }
+    @Override @Transactional(readOnly = true)
+    public List<SaleResponseDTO> getAllSales() { return saleRepository.findAll().stream().map(saleMapper::toDto).toList(); }
 
-    @Override
-    @Transactional
-    public SaleResponseDTO updateSale(UUID id, SaleRequestDTO request) {
-        SaleDomain existingSale = findSaleOrThrow(id);
-        ensureSaleCanBeModified(existingSale);
-
+    @Override @Transactional
+    public SaleAsyncResponseDTO updateSale(UUID id, SaleRequestDTO request) {
+        ValidationUtils.requireObject(id, "El id de venta es obligatorio.");
         validateRequiredSalePayload(request);
-        validateSaleLineItems(request.getDetails());
-        saleStockValidatorService.validateStockForSaleDetails(request.getDetails());
-
-        existingSale.setSellerId(request.getSellerId().trim());
-        existingSale.setLocationId(request.getLocationId());
-        existingSale.setTableId(request.getTableId().trim());
-
-        traceService.deleteTracesBySaleId(existingSale.getId());
-        existingSale.getDetails().clear();
-
-        BigDecimal totalAmount = processSaleDetails(existingSale, request.getDetails());
-        existingSale.setTotalAmount(totalAmount);
-
-        SaleDomain savedSale = saleRepository.save(existingSale);
-        traceService.createInitialTraces(savedSale);
-
-        return saleMapper.toDto(savedSale);
+        SaleEventMessage message = buildEventMessage(SaleEventType.SALE_UPDATE_REQUESTED, id, request.getSellerId(), request.getLocationId(), request.getTableId(), request.getDetails());
+        saleEventPublisher.publishSaleUpdateRequested(message);
+        return buildAsyncResponse(id, "Solicitud de actualización de venta enviada a procesamiento.", SaleEventType.SALE_UPDATE_REQUESTED);
     }
 
-    @Override
-    @Transactional
-    public SaleResponseDTO patchSale(UUID id, SalePatchDTO request) {
-        SaleDomain existingSale = findSaleOrThrow(id);
-        ensureSaleCanBeModified(existingSale);
-
-        updateSaleBasicInfo(existingSale, request);
-        boolean detailsUpdated = updateSaleDetails(existingSale, request.details());
-
-        validatePersistableSale(existingSale);
-
-        SaleDomain savedSale = saleRepository.save(existingSale);
-
-        if (detailsUpdated) {
-            traceService.createInitialTraces(savedSale);
-        }
-
-        return saleMapper.toDto(savedSale);
+    @Override @Transactional
+    public SaleAsyncResponseDTO patchSale(UUID id, SalePatchDTO request) {
+        ValidationUtils.requireObject(id, "El id de venta es obligatorio.");
+        ValidationUtils.requireObject(request, "El payload de patch es obligatorio.");
+        List<SaleDetailEventMessage> details = request.details() == null ? null : buildDetailMessages(request.details());
+        BigDecimal totalAmount = details == null ? null : details.stream().map(SaleDetailEventMessage::getSubtotal).reduce(BigDecimal.ZERO, BigDecimal::add);
+        SaleEventMessage message = buildBaseEvent(SaleEventType.SALE_PATCH_REQUESTED, id);
+        message.setSellerId(trimToNull(request.sellerId()));
+        message.setLocationId(request.locationId());
+        message.setTableId(trimToNull(request.tableId()));
+        message.setDetails(details);
+        message.setTotalAmount(totalAmount);
+        saleEventPublisher.publishSalePatchRequested(message);
+        return buildAsyncResponse(id, "Solicitud de actualización parcial de venta enviada a procesamiento.", SaleEventType.SALE_PATCH_REQUESTED);
     }
 
-    @Override
-    @Transactional
-    public void deleteSale(UUID id) {
-        SaleDomain existingSale = findSaleOrThrow(id);
-        ensureSaleCanBeDeleted(existingSale);
-
-        traceService.deleteTracesBySaleId(existingSale.getId());
-        saleRepository.delete(existingSale);
-    }
-
-    private SaleDomain findSaleOrThrow(UUID id) {
-        return saleRepository.findById(id)
-                .orElseThrow(() -> new SaleNotFoundException(VENTA_NO_ENCONTRADA + id));
-    }
-
-    private void ensureSaleCanBeModified(SaleDomain sale) {
-        if (sale.getStatus() == SaleStatus.COMPLETED) {
-            throw new SaleBusinessException("No se puede modificar una venta en estado COMPLETED.");
-        }
-    }
-
-    private void ensureSaleCanBeDeleted(SaleDomain sale) {
-        if (sale.getStatus() == SaleStatus.COMPLETED) {
-            throw new SaleBusinessException("No se puede eliminar una venta en estado COMPLETED.");
-        }
-    }
-
-    private void updateSaleBasicInfo(SaleDomain existingSale, SalePatchDTO request) {
-        if (request.status() != null) {
-            existingSale.setStatus(request.status());
-        }
-
-        if (request.sellerId() != null) {
-            existingSale.setSellerId(trimToNull(request.sellerId()));
-        }
-
-        if (request.locationId() != null) {
-            existingSale.setLocationId(request.locationId());
-        }
-
-        if (request.tableId() != null) {
-            existingSale.setTableId(trimToNull(request.tableId()));
-        }
-    }
-
-    private boolean updateSaleDetails(SaleDomain existingSale, List<SaleDetailDTO> details) {
-        if (details == null) {
-            return false;
-        }
-
-        if (details.isEmpty()) {
-            throw new SaleValidationException("La venta debe tener al menos una línea de detalle.");
-        }
-
-        validateSaleLineItems(details);
-        saleStockValidatorService.validateStockForSaleDetails(details);
-
-        traceService.deleteTracesBySaleId(existingSale.getId());
-        existingSale.getDetails().clear();
-
-        BigDecimal totalAmount = processSaleDetails(existingSale, details);
-        existingSale.setTotalAmount(totalAmount);
-
-        return true;
+    @Override @Transactional
+    public SaleAsyncResponseDTO deleteSale(UUID id) {
+        ValidationUtils.requireObject(id, "El id de venta es obligatorio.");
+        SaleEventMessage message = buildBaseEvent(SaleEventType.SALE_DELETE_REQUESTED, id);
+        message.setDetails(Collections.emptyList());
+        saleEventPublisher.publishSaleDeleteRequested(message);
+        return buildAsyncResponse(id, "Solicitud de eliminación de venta enviada a procesamiento.", SaleEventType.SALE_DELETE_REQUESTED);
     }
 
     private void validateRequiredSalePayload(SaleRequestDTO request) {
@@ -197,65 +91,66 @@ public class SaleServiceImpl implements SaleService {
         ValidationUtils.requireObject(request.getLocationId(), "La locationId es obligatoria.");
         ValidationUtils.requireText(request.getTableId(), "tableId");
         ValidationUtils.requireObject(request.getDetails(), "La lista de detalles es obligatoria.");
-
-        if (request.getDetails().isEmpty()) {
-            throw new SaleValidationException("La venta debe tener al menos una línea de detalle.");
-        }
+        if (request.getDetails().isEmpty()) throw new SaleValidationException("La venta debe tener al menos una línea de detalle.");
+        buildDetailMessages(request.getDetails());
     }
 
-    private void validateSaleLineItems(List<SaleDetailDTO> details) {
-        for (SaleDetailDTO detail : details) {
-            ValidationUtils.requireObject(detail, "Cada línea de detalle es obligatoria.");
-            ValidationUtils.requireObject(detail.getRecipeId(), "El recipeId es obligatorio en cada línea.");
-            ValidationUtils.requirePositive(detail.getQuantity(), "La cantidad debe ser mayor que cero.");
-            ValidationUtils.requirePositive(detail.getUnitPrice(), "El precio unitario debe ser mayor que cero.");
-            ValidationUtils.requireText(detail.getRecipeLineComment(), "recipeLineComment");
-            ValidationUtils.validateMaxLength(detail.getRecipeLineComment(), 500, "recipeLineComment");
-            ValidationUtils.validateMaxLength(detail.getLineDisplayName(), 255, "lineDisplayName");
-        }
+    private List<SaleDetailEventMessage> buildDetailMessages(List<SaleDetailDTO> details) {
+        if (details.isEmpty()) throw new SaleValidationException("La venta debe tener al menos una línea de detalle.");
+        return details.stream().map(this::mapDetail).toList();
     }
 
-    private void validatePersistableSale(SaleDomain sale) {
-        ValidationUtils.requireText(sale.getSellerId(), "sellerId");
-        ValidationUtils.requireObject(sale.getLocationId(), "La locationId es obligatoria.");
-        ValidationUtils.requireText(sale.getTableId(), "tableId");
-        ValidationUtils.requireObject(sale.getDetails(), "La lista de detalles es obligatoria.");
-
-        if (sale.getDetails().isEmpty()) {
-            throw new SaleValidationException("La venta debe tener al menos una línea de detalle.");
-        }
+    private SaleDetailEventMessage mapDetail(SaleDetailDTO detail) {
+        ValidationUtils.requireObject(detail, "Cada línea de detalle es obligatoria.");
+        ValidationUtils.requireObject(detail.getRecipeId(), "El recipeId es obligatorio en cada línea.");
+        ValidationUtils.requirePositive(detail.getQuantity(), "La cantidad debe ser mayor que cero.");
+        ValidationUtils.requirePositive(detail.getUnitPrice(), "El precio unitario debe ser mayor que cero.");
+        ValidationUtils.requireText(detail.getRecipeLineComment(), "recipeLineComment");
+        ValidationUtils.validateMaxLength(detail.getRecipeLineComment(), 500, "recipeLineComment");
+        ValidationUtils.validateMaxLength(detail.getLineDisplayName(), 255, "lineDisplayName");
+        SaleDetailEventMessage message = new SaleDetailEventMessage();
+        message.setSaleDetailId(UUID.randomUUID());
+        message.setRecipeId(detail.getRecipeId());
+        message.setQuantity(detail.getQuantity());
+        message.setUnitPrice(detail.getUnitPrice());
+        message.setSubtotal(detail.getUnitPrice().multiply(detail.getQuantity()));
+        message.setRecipeLineComment(detail.getRecipeLineComment().trim());
+        message.setLineDisplayName(trimToNull(detail.getLineDisplayName()));
+        return message;
     }
 
-    private BigDecimal processSaleDetails(SaleDomain sale, List<SaleDetailDTO> detailDtos) {
-        BigDecimal totalAmount = BigDecimal.ZERO;
-
-        for (SaleDetailDTO detailDto : detailDtos) {
-            SaleDetailDomain detail = new SaleDetailDomain();
-            detail.setRecipeId(detailDto.getRecipeId());
-            detail.setQuantity(detailDto.getQuantity());
-            detail.setUnitPrice(detailDto.getUnitPrice());
-            detail.setRecipeLineComment(detailDto.getRecipeLineComment().trim());
-            detail.setLineDisplayName(trimToNull(detailDto.getLineDisplayName()));
-
-            BigDecimal subtotal = calculateSubtotal(detailDto.getUnitPrice(), detailDto.getQuantity());
-            detail.setSubtotal(subtotal);
-
-            sale.addDetail(detail);
-            totalAmount = totalAmount.add(subtotal);
-        }
-
-        return totalAmount;
+    private SaleEventMessage buildEventMessage(SaleEventType type, UUID saleId, String sellerId, UUID locationId, String tableId, List<SaleDetailDTO> details) {
+        List<SaleDetailEventMessage> detailMessages = buildDetailMessages(details);
+        BigDecimal totalAmount = detailMessages.stream().map(SaleDetailEventMessage::getSubtotal).reduce(BigDecimal.ZERO, BigDecimal::add);
+        SaleEventMessage event = buildBaseEvent(type, saleId);
+        event.setSellerId(trimToNull(sellerId));
+        event.setLocationId(locationId);
+        event.setTableId(trimToNull(tableId));
+        event.setDetails(detailMessages);
+        event.setTotalAmount(totalAmount);
+        return event;
     }
 
-    private BigDecimal calculateSubtotal(BigDecimal unitPrice, BigDecimal quantity) {
-        return unitPrice.multiply(quantity);
+    private SaleEventMessage buildBaseEvent(SaleEventType type, UUID saleId) {
+        SaleEventMessage event = new SaleEventMessage();
+        event.setEventId(UUID.randomUUID());
+        event.setEventType(type.name());
+        event.setSaleId(saleId);
+        event.setOccurredAt(LocalDateTime.now());
+        return event;
+    }
+
+    private SaleAsyncResponseDTO buildAsyncResponse(UUID saleId, String message, SaleEventType type) {
+        SaleAsyncResponseDTO response = new SaleAsyncResponseDTO();
+        response.setSaleId(saleId);
+        response.setMessage(message);
+        response.setEventType(type.name());
+        response.setPublishedAt(LocalDateTime.now());
+        return response;
     }
 
     private String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-
+        if (value == null) return null;
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
     }
