@@ -20,6 +20,11 @@ public class RecipePreparationTraceController {
         this.recipePreparationTraceService = recipePreparationTraceService;
     }
 
+    @GetMapping
+    public ResponseEntity<List<RecipePreparationTraceResponseDTO>> findAll() {
+        return ResponseEntity.ok(recipePreparationTraceService.getAllTraces());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<RecipePreparationTraceResponseDTO> findById(@PathVariable UUID id) {
         return ResponseEntity.ok(recipePreparationTraceService.getTraceById(id));

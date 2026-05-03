@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface RecipePreparationTraceService {
+    List<RecipePreparationTraceResponseDTO> getAllTraces();
     List<RecipePreparationTraceResponseDTO> getTracesBySaleId(UUID saleId);
     RecipePreparationTraceResponseDTO getTraceById(UUID id);
     List<RecipePreparationTraceResponseDTO> getTracesBySaleDetailId(UUID saleDetailId);

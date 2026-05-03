@@ -29,6 +29,12 @@ public class RecipePreparationTraceServiceImpl implements RecipePreparationTrace
 
     @Override
     @Transactional(readOnly = true)
+    public List<RecipePreparationTraceResponseDTO> getAllTraces() {
+        return traceMapper.toDtoList(traceRepository.findAll());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<RecipePreparationTraceResponseDTO> getTracesBySaleId(UUID saleId) {
         if (saleId == null) {
             throw new SaleValidationException("El saleId es obligatorio.");
