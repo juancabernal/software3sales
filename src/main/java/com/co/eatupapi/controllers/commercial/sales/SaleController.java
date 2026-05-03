@@ -1,7 +1,6 @@
 package com.co.eatupapi.controllers.commercial.sales;
 
 import com.co.eatupapi.dto.commercial.sales.SalePatchDTO;
-import com.co.eatupapi.dto.commercial.sales.SaleAsyncResponseDTO;
 import com.co.eatupapi.dto.commercial.sales.SaleRequestDTO;
 import com.co.eatupapi.dto.commercial.sales.SaleResponseDTO;
 import com.co.eatupapi.services.commercial.sales.SaleService;
@@ -9,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,8 +32,8 @@ public class SaleController {
 
     @Operation(summary = "Crear una venta")
     @PostMapping
-    public ResponseEntity<SaleAsyncResponseDTO> create(@Valid @RequestBody SaleRequestDTO request) {
-        return ResponseEntity.accepted().body(saleService.createSale(request));
+    public ResponseEntity<SaleResponseDTO> create(@Valid @RequestBody SaleRequestDTO request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(saleService.createSale(request));
     }
 
     @Operation(summary = "Obtener una venta por ID")
@@ -50,19 +50,20 @@ public class SaleController {
 
     @Operation(summary = "Actualizar una venta")
     @PutMapping("/{id}")
-    public ResponseEntity<SaleAsyncResponseDTO> update(@PathVariable UUID id, @Valid @RequestBody SaleRequestDTO request) {
-        return ResponseEntity.accepted().body(saleService.updateSale(id, request));
+    public ResponseEntity<SaleResponseDTO> update(@PathVariable UUID id, @Valid @RequestBody SaleRequestDTO request) {
+        return ResponseEntity.ok(saleService.updateSale(id, request));
     }
 
     @Operation(summary = "Actualizar parcialmente una venta")
     @PatchMapping("/{id}")
-    public ResponseEntity<SaleAsyncResponseDTO> patch(@PathVariable UUID id, @Valid @RequestBody SalePatchDTO request) {
-        return ResponseEntity.accepted().body(saleService.patchSale(id, request));
+    public ResponseEntity<SaleResponseDTO> patch(@PathVariable UUID id, @Valid @RequestBody SalePatchDTO request) {
+        return ResponseEntity.ok(saleService.patchSale(id, request));
     }
 
     @Operation(summary = "Eliminar una venta")
     @DeleteMapping("/{id}")
-    public ResponseEntity<SaleAsyncResponseDTO> delete(@PathVariable UUID id) {
-        return ResponseEntity.accepted().body(saleService.deleteSale(id));
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        saleService.deleteSale(id);
+        return ResponseEntity.noContent().build();
     }
 }

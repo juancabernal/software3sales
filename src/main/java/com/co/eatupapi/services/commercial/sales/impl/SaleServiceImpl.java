@@ -1,6 +1,6 @@
 package com.co.eatupapi.services.commercial.sales.impl;
 
-import com.co.eatupapi.dto.commercial.sales.SaleAsyncResponseDTO;
+import com.co.eatupapi.domain.commercial.sales.SaleStatus;
 import com.co.eatupapi.dto.commercial.sales.SaleDetailDTO;
 import com.co.eatupapi.dto.commercial.sales.SalePatchDTO;
 import com.co.eatupapi.dto.commercial.sales.SaleRequestDTO;
@@ -17,7 +17,6 @@ import com.co.eatupapi.utils.commercial.sales.mapper.SaleMapper;
 import com.co.eatupapi.utils.commercial.sales.validation.ValidationUtils;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -37,12 +36,12 @@ public class SaleServiceImpl implements SaleService {
     }
 
     @Override @Transactional
-    public SaleAsyncResponseDTO createSale(SaleRequestDTO request) {
+    public SaleResponseDTO createSale(SaleRequestDTO request) {
         validateRequiredSalePayload(request);
         UUID saleId = UUID.randomUUID();
         SaleEventMessage message = buildEventMessage(SaleEventType.SALE_CREATE_REQUESTED, saleId, request.getSellerId(), request.getLocationId(), request.getTableId(), request.getDetails());
         saleEventPublisher.publishSaleCreateRequested(message);
-        return buildAsyncResponse(saleId, "Solicitud de creación de venta enviada a procesamiento.", SaleEventType.SALE_CREATE_REQUESTED);
+        return buildSaleResponse(saleId, request.getSellerId(), request.getLocationId(), request.getTableId(), request.getDetails(), SaleStatus.CREATED);
     }
 
     @Override @Transactional(readOnly = true)
@@ -52,16 +51,16 @@ public class SaleServiceImpl implements SaleService {
     public List<SaleResponseDTO> getAllSales() { return saleRepository.findAll().stream().map(saleMapper::toDto).toList(); }
 
     @Override @Transactional
-    public SaleAsyncResponseDTO updateSale(UUID id, SaleRequestDTO request) {
+    public SaleResponseDTO updateSale(UUID id, SaleRequestDTO request) {
         ValidationUtils.requireObject(id, "El id de venta es obligatorio.");
         validateRequiredSalePayload(request);
         SaleEventMessage message = buildEventMessage(SaleEventType.SALE_UPDATE_REQUESTED, id, request.getSellerId(), request.getLocationId(), request.getTableId(), request.getDetails());
         saleEventPublisher.publishSaleUpdateRequested(message);
-        return buildAsyncResponse(id, "Solicitud de actualización de venta enviada a procesamiento.", SaleEventType.SALE_UPDATE_REQUESTED);
+        return buildSaleResponse(id, request.getSellerId(), request.getLocationId(), request.getTableId(), request.getDetails(), SaleStatus.IN_PROGRESS);
     }
 
     @Override @Transactional
-    public SaleAsyncResponseDTO patchSale(UUID id, SalePatchDTO request) {
+    public SaleResponseDTO patchSale(UUID id, SalePatchDTO request) {
         ValidationUtils.requireObject(id, "El id de venta es obligatorio.");
         ValidationUtils.requireObject(request, "El payload de patch es obligatorio.");
         List<SaleDetailEventMessage> details = request.details() == null ? null : buildDetailMessages(request.details());
@@ -73,16 +72,25 @@ public class SaleServiceImpl implements SaleService {
         message.setDetails(details);
         message.setTotalAmount(totalAmount);
         saleEventPublisher.publishSalePatchRequested(message);
-        return buildAsyncResponse(id, "Solicitud de actualización parcial de venta enviada a procesamiento.", SaleEventType.SALE_PATCH_REQUESTED);
+
+        SaleResponseDTO response = new SaleResponseDTO();
+        response.setId(id);
+        response.setSellerId(trimToNull(request.sellerId()));
+        response.setLocationId(request.locationId());
+        response.setTableId(trimToNull(request.tableId()));
+        response.setStatus(request.status());
+        response.setDetails(request.details());
+        response.setTotalAmount(totalAmount);
+        response.setModifiedDate(LocalDateTime.now());
+        return response;
     }
 
     @Override @Transactional
-    public SaleAsyncResponseDTO deleteSale(UUID id) {
+    public void deleteSale(UUID id) {
         ValidationUtils.requireObject(id, "El id de venta es obligatorio.");
         SaleEventMessage message = buildBaseEvent(SaleEventType.SALE_DELETE_REQUESTED, id);
-        message.setDetails(Collections.emptyList());
+        message.setDetails(List.of());
         saleEventPublisher.publishSaleDeleteRequested(message);
-        return buildAsyncResponse(id, "Solicitud de eliminación de venta enviada a procesamiento.", SaleEventType.SALE_DELETE_REQUESTED);
     }
 
     private void validateRequiredSalePayload(SaleRequestDTO request) {
@@ -140,12 +148,18 @@ public class SaleServiceImpl implements SaleService {
         return event;
     }
 
-    private SaleAsyncResponseDTO buildAsyncResponse(UUID saleId, String message, SaleEventType type) {
-        SaleAsyncResponseDTO response = new SaleAsyncResponseDTO();
-        response.setSaleId(saleId);
-        response.setMessage(message);
-        response.setEventType(type.name());
-        response.setPublishedAt(LocalDateTime.now());
+    private SaleResponseDTO buildSaleResponse(UUID saleId, String sellerId, UUID locationId, String tableId, List<SaleDetailDTO> details, SaleStatus status) {
+        SaleResponseDTO response = new SaleResponseDTO();
+        response.setId(saleId);
+        response.setSellerId(trimToNull(sellerId));
+        response.setLocationId(locationId);
+        response.setTableId(trimToNull(tableId));
+        response.setStatus(status);
+        response.setDetails(details);
+        BigDecimal total = details.stream().map(d -> d.getUnitPrice().multiply(d.getQuantity())).reduce(BigDecimal.ZERO, BigDecimal::add);
+        response.setTotalAmount(total);
+        response.setCreatedDate(LocalDateTime.now());
+        response.setModifiedDate(LocalDateTime.now());
         return response;
     }
 
