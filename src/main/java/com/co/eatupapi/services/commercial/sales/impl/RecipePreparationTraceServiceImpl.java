@@ -7,6 +7,8 @@ import com.co.eatupapi.domain.commercial.sales.SaleDomain;
 import com.co.eatupapi.dto.commercial.sales.RecipePreparationTraceResponseDTO;
 import com.co.eatupapi.repositories.commercial.sales.RecipePreparationTraceRepository;
 import com.co.eatupapi.services.commercial.sales.RecipePreparationTraceService;
+import com.co.eatupapi.utils.commercial.sales.exceptions.SaleNotFoundException;
+import com.co.eatupapi.utils.commercial.sales.exceptions.SaleValidationException;
 import com.co.eatupapi.utils.commercial.sales.mapper.RecipePreparationTraceMapper;
 import java.util.List;
 import java.util.UUID;
@@ -26,45 +28,72 @@ public class RecipePreparationTraceServiceImpl implements RecipePreparationTrace
     }
 
     @Override
-    @Transactional
-    public void createInitialTraces(SaleDomain sale) {
-        if (sale == null || sale.getDetails() == null || sale.getDetails().isEmpty()) {
-            return;
+    @Transactional(readOnly = true)
+    public List<RecipePreparationTraceResponseDTO> getTracesBySaleId(UUID saleId) {
+        if (saleId == null) {
+            throw new SaleValidationException("El saleId es obligatorio.");
+        }
+        return traceMapper.toDtoList(traceRepository.findBySaleId(saleId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RecipePreparationTraceResponseDTO getTraceById(UUID id) {
+        if (id == null) {
+            throw new SaleValidationException("El id de la trazabilidad es obligatorio.");
         }
 
-        List<RecipePreparationTraceDomain> traces = sale.getDetails().stream().map(detail -> buildInitialTrace(sale, detail)).toList();
-        traceRepository.saveAll(traces);
+        RecipePreparationTraceDomain trace = traceRepository.findById(id)
+                .orElseThrow(() -> new SaleNotFoundException("No se encontró la trazabilidad con id: " + id));
+
+        return traceMapper.toDto(trace);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RecipePreparationTraceResponseDTO> getTracesBySaleDetailId(UUID saleDetailId) {
+        if (saleDetailId == null) {
+            throw new SaleValidationException("El saleDetailId es obligatorio.");
+        }
+        return traceMapper.toDtoList(traceRepository.findBySaleDetailId(saleDetailId));
     }
 
     @Override
     @Transactional
     public void deleteTracesBySaleId(UUID saleId) {
-        traceRepository.deleteBySale_Id(saleId);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<RecipePreparationTraceResponseDTO> findBySaleId(UUID saleId) {
-        return traceRepository.findBySale_Id(saleId).stream().map(traceMapper::toDto).toList();
+        if (saleId == null) {
+            throw new SaleValidationException("El saleId es obligatorio.");
+        }
+        traceRepository.deleteBySaleId(saleId);
     }
 
     @Override
     @Transactional
-    public void updateTraceStatus(UUID saleDetailId, RecipePreparationTraceStatus newStatus, String observation) {
-        List<RecipePreparationTraceDomain> traces = traceRepository.findBySaleDetail_Id(saleDetailId);
-        for (RecipePreparationTraceDomain trace : traces) {
-            trace.setStatus(newStatus);
-            trace.setObservation(observation);
+    public void createInitialTraces(SaleDomain sale) {
+        if (sale == null) {
+            throw new SaleValidationException("La venta es obligatoria para crear trazabilidades.");
         }
+        if (sale.getId() == null) {
+            throw new SaleValidationException("El id de la venta es obligatorio para crear trazabilidades.");
+        }
+        if (sale.getDetails() == null || sale.getDetails().isEmpty()) {
+            throw new SaleValidationException("La venta debe tener detalles para crear trazabilidades.");
+        }
+
+        List<RecipePreparationTraceDomain> traces = sale.getDetails().stream()
+                .map(detail -> buildInitialTrace(sale, detail))
+                .toList();
+
         traceRepository.saveAll(traces);
     }
 
     private RecipePreparationTraceDomain buildInitialTrace(SaleDomain sale, SaleDetailDomain detail) {
         RecipePreparationTraceDomain trace = new RecipePreparationTraceDomain();
-        trace.setSale(sale);
-        trace.setSaleDetail(detail);
+        trace.setSaleId(sale.getId());
+        trace.setSaleDetailId(detail.getId());
         trace.setRecipeId(detail.getRecipeId());
-        trace.setStatus(RecipePreparationTraceStatus.PENDING_STOCK_DISCOUNT);
+        // TODO: Reemplazar este estado temporal con la respuesta real de inventory (ACCEPTED/REJECTED).
+        trace.setStatus(RecipePreparationTraceStatus.ACCEPTED);
         trace.setObservation(null);
         return trace;
     }

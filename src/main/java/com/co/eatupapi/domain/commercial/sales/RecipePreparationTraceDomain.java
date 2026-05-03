@@ -4,12 +4,9 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -25,19 +22,17 @@ public class RecipePreparationTraceDomain {
     @Column(updatable = false, nullable = false)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sale_id", nullable = false)
-    private SaleDomain sale;
+    @Column(name = "sale_id", nullable = false)
+    private UUID saleId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sale_detail_id", nullable = false)
-    private SaleDetailDomain saleDetail;
+    @Column(name = "sale_detail_id", nullable = false)
+    private UUID saleDetailId;
 
     @Column(name = "recipe_id", nullable = false)
     private UUID recipeId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 30)
     private RecipePreparationTraceStatus status;
 
     @Column(length = 500)
@@ -54,18 +49,59 @@ public class RecipePreparationTraceDomain {
     public RecipePreparationTraceDomain() {
     }
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
-    public SaleDomain getSale() { return sale; }
-    public void setSale(SaleDomain sale) { this.sale = sale; }
-    public SaleDetailDomain getSaleDetail() { return saleDetail; }
-    public void setSaleDetail(SaleDetailDomain saleDetail) { this.saleDetail = saleDetail; }
-    public UUID getRecipeId() { return recipeId; }
-    public void setRecipeId(UUID recipeId) { this.recipeId = recipeId; }
-    public RecipePreparationTraceStatus getStatus() { return status; }
-    public void setStatus(RecipePreparationTraceStatus status) { this.status = status; }
-    public String getObservation() { return observation; }
-    public void setObservation(String observation) { this.observation = observation; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public LocalDateTime getModifiedDate() { return modifiedDate; }
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public UUID getSaleId() {
+        return saleId;
+    }
+
+    public void setSaleId(UUID saleId) {
+        this.saleId = saleId;
+    }
+
+    public UUID getSaleDetailId() {
+        return saleDetailId;
+    }
+
+    public void setSaleDetailId(UUID saleDetailId) {
+        this.saleDetailId = saleDetailId;
+    }
+
+    public UUID getRecipeId() {
+        return recipeId;
+    }
+
+    public void setRecipeId(UUID recipeId) {
+        this.recipeId = recipeId;
+    }
+
+    public RecipePreparationTraceStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(RecipePreparationTraceStatus status) {
+        this.status = status;
+    }
+
+    public String getObservation() {
+        return observation;
+    }
+
+    public void setObservation(String observation) {
+        this.observation = observation;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public LocalDateTime getModifiedDate() {
+        return modifiedDate;
+    }
 }
